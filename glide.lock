@@ -1,5 +1,5 @@
-hash: 5ffbb7d077d2f42d30c8107c7c323b17e8fbc252fff78e24c5e19577cf942e04
-updated: 2018-08-13T15:02:55.899715-04:00
+hash: dc9e8b3294748ec2628f7763d448fcff3c0ca1f3f08d3ce4a3342a0287e51ec2
+updated: 2018-08-16T21:28:11.572942286+08:00
 imports:
 - name: github.com/apache/thrift
   version: 53dd39833a08ce33582e5ff31fa18bb4735d6731
@@ -12,7 +12,7 @@ imports:
   subpackages:
   - quantile
 - name: github.com/bsm/sarama-cluster
-  version: cf455bc755fe41ac9bb2861e7a961833d9c2ecc3
+  version: abb0e9f5dd57b5a3167e1472136a84c4b989478b
 - name: github.com/codahale/hdrhistogram
   version: 3a0bb77429bd3a61596f5e8a3172445844342120
 - name: github.com/crossdock/crossdock-go
@@ -108,6 +108,19 @@ imports:
   version: 3a5767ca75ece5f7f1440b1d16975247f8d8b221
 - name: github.com/gorilla/mux
   version: 392c28fe23e1c45ddba891b0320b3b5df220beea
+- name: github.com/graphql-go/graphql
+  version: 5c1be0872a56fba73b279434ea95dfda735abedd
+  subpackages:
+  - gqlerrors
+  - language/ast
+  - language/kinds
+  - language/lexer
+  - language/location
+  - language/parser
+  - language/printer
+  - language/source
+  - language/typeInfo
+  - language/visitor
 - name: github.com/grpc-ecosystem/grpc-gateway
   version: 58f78b988bc393694cef62b92c5cde77e4742ff5
   subpackages:
@@ -292,7 +305,7 @@ imports:
   - zapcore
   - zaptest
 - name: golang.org/x/net
-  version: c39426892332e1bb5ec0a434a079bf82f5d30c54
+  version: aaf60122140d3fcf75376d319f0554393160eb50
   subpackages:
   - context
   - context/ctxhttp

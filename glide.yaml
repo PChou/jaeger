@@ -76,3 +76,5 @@ import:
 - package: golang.org/x/sys
   subpackages:
   - unix
+- package: github.com/graphql-go/graphql
+  version: 5c1be0872a56fba73b279434ea95dfda735abedd

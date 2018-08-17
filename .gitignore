@@ -13,6 +13,7 @@ cover.html
 vendor/
 examples/hotrod/hotrod
 cmd/standalone/standalone-linux
+cmd/standalone/standalone-
 cmd/agent/agent
 cmd/agent/agent-linux
 cmd/collector/collector

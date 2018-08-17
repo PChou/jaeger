@@ -17,6 +17,7 @@ package app
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -35,6 +36,8 @@ import (
 	"github.com/jaegertracing/jaeger/pkg/multierror"
 	"github.com/jaegertracing/jaeger/storage/dependencystore"
 	"github.com/jaegertracing/jaeger/storage/spanstore"
+
+	"github.com/graphql-go/graphql"
 )
 
 const (
@@ -87,6 +90,7 @@ type APIHandler struct {
 	basePath          string
 	apiPrefix         string
 	tracer            opentracing.Tracer
+	schema            graphql.Schema //graphql root schema
 }
 
 // NewAPIHandler returns an APIHandler
@@ -115,6 +119,96 @@ func NewAPIHandler(spanReader spanstore.Reader, dependencyReader dependencystore
 	if aH.tracer == nil {
 		aH.tracer = opentracing.NoopTracer{}
 	}
+
+	var operationType = graphql.NewObject(
+		graphql.ObjectConfig{
+			Name: "Operation",
+			Fields: graphql.Fields{
+				"name": &graphql.Field{
+					Type: graphql.String,
+				},
+			},
+		},
+	)
+
+	var serviceType = graphql.NewObject(
+		graphql.ObjectConfig{
+			Name: "Service",
+			Fields: graphql.Fields{
+				"name": &graphql.Field{
+					Type: graphql.String,
+				},
+				"operations": &graphql.Field{
+					Type: graphql.NewList(operationType),
+					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+						if service, ok := p.Source.(Service); ok {
+							operations, err := aH.spanReader.GetOperations(service.Name)
+							if err != nil {
+								return nil, err
+							}
+							operationWrap := make([]Operation, 0)
+							for _, operation := range operations {
+								operationWrap = append(operationWrap, Operation{Name: operation})
+							}
+							return operationWrap, nil
+						}
+						return []interface{}{}, nil
+					},
+				},
+			},
+		})
+
+	var rootQuery = graphql.NewObject(graphql.ObjectConfig{
+		Name: "RootQuery",
+		Fields: graphql.Fields{
+			"serviceList": &graphql.Field{
+				Type:        graphql.NewList(serviceType),
+				Description: "List of services",
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					services, err := aH.spanReader.GetServices()
+					if err != nil {
+						return []interface{}{}, err
+					}
+
+					servicesWrap := make([]Service, 0)
+					for _, service := range services {
+						servicesWrap = append(servicesWrap, Service{Name: service})
+					}
+					return servicesWrap, nil
+				},
+			},
+			"service": &graphql.Field{
+				Type: serviceType,
+				Args: graphql.FieldConfigArgument{
+					"name": &graphql.ArgumentConfig{
+						Type: graphql.String,
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					name := p.Args["name"]
+					services, err := aH.spanReader.GetServices()
+					if err != nil {
+						return nil, err
+					}
+
+					for _, service := range services {
+						if service == name {
+							return Service{Name: service}, nil
+						}
+					}
+					return nil, nil
+				},
+			},
+		},
+	})
+
+	var schema, _ = graphql.NewSchema(
+		graphql.SchemaConfig{
+			Query: rootQuery,
+		},
+	)
+
+	aH.schema = schema
 	return aH
 }
 
@@ -129,6 +223,8 @@ func (aH *APIHandler) RegisterRoutes(router *mux.Router) {
 	// TODO - remove this when UI catches up
 	aH.handleFunc(router, aH.getOperationsLegacy, "/services/{%s}/operations", serviceParam).Methods(http.MethodGet)
 	aH.handleFunc(router, aH.dependencies, "/dependencies").Methods(http.MethodGet)
+
+	aH.handleFunc(router, aH.doGraphQL, "/graphql").Methods(http.MethodPost)
 }
 
 func (aH *APIHandler) handleFunc(
@@ -150,6 +246,35 @@ func (aH *APIHandler) handleFunc(
 func (aH *APIHandler) route(route string, args ...interface{}) string {
 	args = append([]interface{}{aH.apiPrefix}, args...)
 	return fmt.Sprintf("/%s"+route, args...)
+}
+
+func (aH *APIHandler) doGraphQL(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("%v", err), 500)
+		return
+	}
+
+	var q GraphQLPostBody
+	err = json.Unmarshal(body, &q)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("%v", err), 500)
+		return
+	}
+
+	//aH.logger.Info(q.Query)
+	result := graphql.Do(graphql.Params{
+		Schema:         aH.schema,
+		RequestString:  q.Query,
+		VariableValues: q.Variables,
+	})
+	if len(result.Errors) > 0 {
+		http.Error(w, fmt.Sprintf("%v", result.Errors), 500)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
 }
 
 func (aH *APIHandler) getServices(w http.ResponseWriter, r *http.Request) {
