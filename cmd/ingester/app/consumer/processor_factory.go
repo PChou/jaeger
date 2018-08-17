@@ -109,10 +109,11 @@ func (c *startedProcessor) Process(message processor.Message) error {
 }
 
 func (c *startedProcessor) Close() error {
-	c.processor.Close()
-
 	for _, service := range c.services {
 		service.Close()
 	}
+
+	c.processor.Close()
+
 	return nil
 }
