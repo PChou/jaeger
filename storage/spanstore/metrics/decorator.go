@@ -15,6 +15,7 @@
 package metrics
 
 import (
+	"errors"
 	"time"
 
 	"github.com/uber/jaeger-lib/metrics"
@@ -101,4 +102,14 @@ func (m *ReadMetricsDecorator) GetOperations(service string) ([]string, error) {
 	retMe, err := m.spanReader.GetOperations(service)
 	m.getOperationsMetrics.emit(err, time.Since(start), len(retMe))
 	return retMe, err
+}
+
+//  implements spanstore.ExtReader#GetThermoDynamic
+func (m *ReadMetricsDecorator) GetThermoDynamic(query *spanstore.ThermoDynamicQueryParameters) (*model.ThermoDynamic, error) {
+	//start := time.Now()
+	//defer m.getOperationsMetrics.emit(err, time.Since(start), len(retMe))
+	if sr, ok := m.spanReader.(spanstore.ExtReader); ok {
+		return sr.GetThermoDynamic(query)
+	}
+	return nil, errors.New("Not implement ExtReader")
 }

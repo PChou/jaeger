@@ -29,6 +29,7 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
+	"github.com/graphql-go/graphql"
 	"github.com/jaegertracing/jaeger/model"
 	"github.com/jaegertracing/jaeger/model/adjuster"
 	uiconv "github.com/jaegertracing/jaeger/model/converter/json"
@@ -36,8 +37,7 @@ import (
 	"github.com/jaegertracing/jaeger/pkg/multierror"
 	"github.com/jaegertracing/jaeger/storage/dependencystore"
 	"github.com/jaegertracing/jaeger/storage/spanstore"
-
-	"github.com/graphql-go/graphql"
+	"github.com/mitchellh/mapstructure"
 )
 
 const (
@@ -156,7 +156,22 @@ func NewAPIHandler(spanReader spanstore.Reader, dependencyReader dependencystore
 					},
 				},
 			},
-		})
+		},
+	)
+
+	var thermodynamicType = graphql.NewObject(
+		graphql.ObjectConfig{
+			Name: "ThermoDynamic",
+			Fields: graphql.Fields{
+				"responseTimeStep": &graphql.Field{
+					Type: graphql.Int,
+				},
+				"nodes": &graphql.Field{
+					Type: graphql.NewList(nodeType),
+				},
+			},
+		},
+	)
 
 	var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 		Name: "RootQuery",
@@ -181,6 +196,8 @@ func NewAPIHandler(spanReader spanstore.Reader, dependencyReader dependencystore
 				Type: serviceType,
 				Args: graphql.FieldConfigArgument{
 					"name": &graphql.ArgumentConfig{
+						//DefaultValue:
+						//Description:
 						Type: graphql.String,
 					},
 				},
@@ -197,6 +214,33 @@ func NewAPIHandler(spanReader spanstore.Reader, dependencyReader dependencystore
 						}
 					}
 					return nil, nil
+				},
+			},
+			"thermodynamic": &graphql.Field{
+				Type: thermodynamicType,
+				Args: graphql.FieldConfigArgument{
+					"duration": &graphql.ArgumentConfig{
+						//DefaultValue:
+						//Description:
+						Type: durationType,
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					var durationParams Duration
+					err := mapstructure.Decode(p.Args["duration"], &durationParams)
+					if err != nil {
+						return nil, err
+					}
+					extReader := aH.spanReader.(spanstore.ExtReader)
+					params, err := durationParams.ToThermoDynamicQueryParameters()
+					if err != nil {
+						return nil, err
+					}
+					td, err := extReader.GetThermoDynamic(params)
+					if err != nil {
+						return nil, err
+					}
+					return td, err
 				},
 			},
 		},

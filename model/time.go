@@ -29,6 +29,12 @@ func TimeAsEpochMicroseconds(t time.Time) uint64 {
 	return uint64(t.UnixNano() / 1000)
 }
 
+// TimeAsEpochMillisenconds converts time.Time to milliseconds since epoch,
+// which is the format the startTimeMillis field is stored in the Span.
+func TimeAsEpochMilliseconds(t time.Time) uint64 {
+	return uint64(t.UnixNano() / 1000 / 1000)
+}
+
 // MicrosecondsAsDuration converts duration in microseconds to time.Duration value.
 func MicrosecondsAsDuration(v uint64) time.Duration {
 	return time.Duration(v) * time.Microsecond

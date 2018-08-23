@@ -459,3 +459,109 @@ func (s *SpanReader) buildNestedQuery(field string, k string, v string) elastic.
 	tagBoolQuery := elastic.NewBoolQuery().Must(keyQuery, valueQuery)
 	return elastic.NewNestedQuery(field, tagBoolQuery)
 }
+
+//ExtReader implementation
+func (s *SpanReader) GetThermoDynamic(query *spanstore.ThermoDynamicQueryParameters) (*model.ThermoDynamic, error) {
+	// {
+	// 	"aggregations": {
+	// 		"date_histogram": {
+	// 			"aggregations": {
+	// 				"histogram": {
+	// 					"histogram": {
+	// 						"extended_bounds": {
+	// 							"max": 3000000,
+	// 							"min": 0
+	// 						},
+	// 						"field": "duration",
+	// 						"interval": 200000
+	// 					}
+	// 				}
+	// 			},
+	// 			"histogram": {
+	// 				"extended_bounds": {
+	// 					"max": 1534944600000,
+	// 					"min": 1534943700000
+	// 				},
+	// 				"field": "startTimeMillis",
+	// 				"interval": 60000
+	// 			}
+	// 		}
+	// 	},
+	// 	"query": {
+	// 		"bool": {
+	// 			"must": {
+	// 				"range": {
+	// 					"startTimeMillis": {
+	// 						"from": 1534943700000,
+	// 						"include_lower": true,
+	// 						"include_upper": true,
+	// 						"to": 1534944600000
+	// 					}
+	// 				}
+	// 			}
+	//
+	// 	},
+	// 	"size": 0
+	// }
+
+	//TODO: check the validation of the query
+	minStartTimeMilli := model.TimeAsEpochMilliseconds(query.StartTimeMin)
+	maxStartTimeMilli := model.TimeAsEpochMilliseconds(query.StartTimeMax)
+	timeRange := elastic.NewRangeQuery("startTimeMillis").Gte(minStartTimeMilli).Lte(maxStartTimeMilli)
+	whereQuery := elastic.NewBoolQuery().Must(timeRange)
+	if query.ServiceName != "" {
+		whereQuery.Must(elastic.NewMatchQuery("process.serviceName", query.ServiceName))
+	}
+	if query.OperationName != "" {
+		whereQuery.Must(elastic.NewMatchQuery("operationName", query.OperationName))
+	}
+
+	durationAgg := elastic.NewHistogramAggregation().
+		Field("duration").
+		Interval(float64(query.DurationInterval/time.Microsecond)). //duration is microseconds
+		ExtendedBounds(float64(query.DurationExtendBoundsMin/time.Microsecond), float64(query.DurationExtendBoundsMax/time.Microsecond))
+
+	timeAgg := elastic.NewHistogramAggregation().
+		Field("startTimeMillis").
+		Interval(float64(query.TimeInterval/time.Millisecond)).
+		ExtendedBounds(float64(minStartTimeMilli), float64(maxStartTimeMilli)).
+		SubAggregation("histogram", durationAgg)
+
+	jaegerIndices := findIndices(spanIndexPrefix, query.StartTimeMin, query.StartTimeMax)
+	searchService := s.client.Search(jaegerIndices...).
+		Type(spanType).
+		Size(0). // set to 0 because we don't want actual documents.
+		Aggregation("date_histogram", timeAgg).
+		IgnoreUnavailable(true).
+		Query(whereQuery)
+
+	searchResult, err := searchService.Do(s.ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "Search service failed")
+	}
+
+	timeBulket, found := searchResult.Aggregations.Terms("date_histogram")
+	if !found {
+		return nil, errors.New("Counld not found bucket by date_histogram")
+	}
+
+	retMe := &model.ThermoDynamic{}
+	retMe.ResponseTimeStep = int(query.DurationInterval / time.Millisecond)
+	retMe.Nodes = make([][3]int, 0)
+	for i, dateBulk := range timeBulket.Buckets {
+		durationBulket, found := dateBulk.Terms("histogram")
+		if !found {
+			continue
+		}
+		column := make([][3]int, len(durationBulket.Buckets))
+		for j, durationBulk := range durationBulket.Buckets {
+			column[j][0] = i
+			column[j][1] = j
+			column[j][2] = int(durationBulk.DocCount)
+		}
+		retMe.Nodes = append(retMe.Nodes, column...)
+	}
+	//b, _ := json.Marshal(searchResult)
+	//fmt.Println(string(b))
+	return retMe, nil
+}
