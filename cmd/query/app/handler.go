@@ -30,6 +30,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/graphql-go/graphql"
+	gl "github.com/jaegertracing/jaeger/cmd/query/app/graphql"
 	"github.com/jaegertracing/jaeger/model"
 	"github.com/jaegertracing/jaeger/model/adjuster"
 	uiconv "github.com/jaegertracing/jaeger/model/converter/json"
@@ -53,6 +54,16 @@ const (
 var (
 	errNoArchiveSpanStorage = errors.New("archive span storage was not configured")
 )
+
+type Service struct {
+	Name       string         `json:"name"`
+	Operations []gl.Operation `json:"operations"`
+}
+
+type GraphQLPostBody struct {
+	Query     string                 `json:"query"`
+	Variables map[string]interface{} `json:"variables"`
+}
 
 // HTTPHandler handles http requests
 type HTTPHandler interface {
@@ -120,17 +131,6 @@ func NewAPIHandler(spanReader spanstore.Reader, dependencyReader dependencystore
 		aH.tracer = opentracing.NoopTracer{}
 	}
 
-	var operationType = graphql.NewObject(
-		graphql.ObjectConfig{
-			Name: "Operation",
-			Fields: graphql.Fields{
-				"name": &graphql.Field{
-					Type: graphql.String,
-				},
-			},
-		},
-	)
-
 	var serviceType = graphql.NewObject(
 		graphql.ObjectConfig{
 			Name: "Service",
@@ -139,35 +139,21 @@ func NewAPIHandler(spanReader spanstore.Reader, dependencyReader dependencystore
 					Type: graphql.String,
 				},
 				"operations": &graphql.Field{
-					Type: graphql.NewList(operationType),
+					Type: graphql.NewList(gl.GLOperationType),
 					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 						if service, ok := p.Source.(Service); ok {
 							operations, err := aH.spanReader.GetOperations(service.Name)
 							if err != nil {
 								return nil, err
 							}
-							operationWrap := make([]Operation, 0)
+							operationWrap := make([]gl.Operation, 0)
 							for _, operation := range operations {
-								operationWrap = append(operationWrap, Operation{Name: operation})
+								operationWrap = append(operationWrap, gl.Operation{Name: operation})
 							}
 							return operationWrap, nil
 						}
 						return []interface{}{}, nil
 					},
-				},
-			},
-		},
-	)
-
-	var thermodynamicType = graphql.NewObject(
-		graphql.ObjectConfig{
-			Name: "ThermoDynamic",
-			Fields: graphql.Fields{
-				"responseTimeStep": &graphql.Field{
-					Type: graphql.Int,
-				},
-				"nodes": &graphql.Field{
-					Type: graphql.NewList(nodeType),
 				},
 			},
 		},
@@ -217,16 +203,16 @@ func NewAPIHandler(spanReader spanstore.Reader, dependencyReader dependencystore
 				},
 			},
 			"thermodynamic": &graphql.Field{
-				Type: thermodynamicType,
+				Type: gl.GLThermodynamicType,
 				Args: graphql.FieldConfigArgument{
 					"duration": &graphql.ArgumentConfig{
 						//DefaultValue:
 						//Description:
-						Type: durationType,
+						Type: gl.GLDurationType,
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					var durationParams Duration
+					var durationParams gl.Duration
 					err := mapstructure.Decode(p.Args["duration"], &durationParams)
 					if err != nil {
 						return nil, err
@@ -241,6 +227,43 @@ func NewAPIHandler(spanReader spanstore.Reader, dependencyReader dependencystore
 						return nil, err
 					}
 					return td, err
+				},
+			},
+			"traceList": &graphql.Field{
+				Type: gl.GLTraceListType,
+				Args: graphql.FieldConfigArgument{
+					"condition": &graphql.ArgumentConfig{
+						//DefaultValue:
+						//Description:
+						Type: gl.GLTraceQueryConditionType,
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					var condition gl.TraceQueryCondition
+					err := mapstructure.Decode(p.Args["condition"], &condition)
+					fmt.Println(condition)
+					params, err := condition.ToTraceQueryParameters()
+					if err != nil {
+						return nil, err
+					}
+					traces, err := aH.spanReader.FindTraces(params)
+					if err != nil {
+						return nil, err
+					}
+					uiTraces := make([]*ui.Trace, len(traces))
+					for i, v := range traces {
+						uiTrace, uiErr := aH.convertModelToUI(v, true)
+						if uiErr != nil {
+							fmt.Println(uiErr)
+							continue
+						}
+						uiTraces[i] = uiTrace
+					}
+
+					return gl.TraceList{
+						Total:  len(traces),
+						Traces: uiTraces,
+					}, nil
 				},
 			},
 		},
@@ -269,6 +292,8 @@ func (aH *APIHandler) RegisterRoutes(router *mux.Router) {
 	aH.handleFunc(router, aH.dependencies, "/dependencies").Methods(http.MethodGet)
 
 	aH.handleFunc(router, aH.doGraphQL, "/graphql").Methods(http.MethodPost)
+	aH.handleFunc(router, aH.doGraphQL, "/trace").Methods(http.MethodPost)
+	aH.handleFunc(router, aH.doGraphQL, "/dashboard").Methods(http.MethodPost)
 }
 
 func (aH *APIHandler) handleFunc(

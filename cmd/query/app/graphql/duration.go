@@ -1,4 +1,4 @@
-package app
+package graphql
 
 import (
 	"time"
@@ -7,26 +7,30 @@ import (
 	"github.com/jaegertracing/jaeger/storage/spanstore"
 )
 
-type Service struct {
-	Name       string      `json:"name"`
-	Operations []Operation `json:"operations"`
-}
-
-type Operation struct {
-	Name string `json:"name"`
-}
-
-type GraphQLPostBody struct {
-	Query     string                 `json:"query"`
-	Variables map[string]interface{} `json:"variables"`
-}
-
-// Duration used to supply thermodynamic query
+// Duration used to supply query associated with time
 type Duration struct {
 	Start string `json:"start"`
 	End   string `json:"end"`
 	Step  string `json:"step"`
 }
+
+//Input Type
+var GLDurationType = graphql.NewInputObject(graphql.InputObjectConfig{
+	Name: "Duration",
+	//Description: "duration that passed in",
+	Fields: graphql.InputObjectConfigFieldMap{
+		"start": &graphql.InputObjectFieldConfig{
+			Type: graphql.String,
+		},
+		"end": &graphql.InputObjectFieldConfig{
+			Type: graphql.String,
+		},
+		"step": &graphql.InputObjectFieldConfig{
+			Type:         graphql.String,
+			DefaultValue: "MINUTE",
+		},
+	},
+})
 
 func (d Duration) ToThermoDynamicQueryParameters() (*spanstore.ThermoDynamicQueryParameters, error) {
 	start, err := time.ParseInLocation("2006-1-2 15:4", d.Start, time.Now().Location())
@@ -50,23 +54,3 @@ func (d Duration) ToThermoDynamicQueryParameters() (*spanstore.ThermoDynamicQuer
 		DurationExtendBoundsMax: time.Millisecond * 3000,
 	}, nil
 }
-
-//Input Type
-var durationType = graphql.NewInputObject(graphql.InputObjectConfig{
-	Name:        "Duration",
-	Description: "duration that passed in",
-	Fields: graphql.InputObjectConfigFieldMap{
-		"start": &graphql.InputObjectFieldConfig{
-			Type: graphql.String,
-		},
-		"end": &graphql.InputObjectFieldConfig{
-			Type: graphql.String,
-		},
-		"step": &graphql.InputObjectFieldConfig{
-			Type:         graphql.String,
-			DefaultValue: "MINUTE",
-		},
-	},
-})
-
-var nodeType = graphql.NewList(graphql.Int)
