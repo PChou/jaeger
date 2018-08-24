@@ -82,6 +82,8 @@ var GLTraceListType = graphql.NewObject(
 )
 
 type TraceQueryCondition struct {
+	ApplicationName  string   `json:"applicationId"`
+	OperationName    string   `json:"operationName"`
 	MaxTraceDuration int      `json:"maxTraceDuration"` //ms
 	MinTraceDuration int      `json:"minTraceDuration"` //ms
 	QueryOrder       string   `json:"queryOrder"`
@@ -95,23 +97,23 @@ type TraceQueryCondition struct {
 }
 
 func (c TraceQueryCondition) ToTraceQueryParameters() (*spanstore.TraceQueryParameters, error) {
-	start, err := time.ParseInLocation("2006-1-2 15:4", c.QueryDuration.Start, time.Now().Location())
+	start, err := ParseSkyWalkingTimeFormat(c.QueryDuration.Start)
 	if err != nil {
 		return nil, err
 	}
-	end, err := time.ParseInLocation("2006-1-2 15:4", c.QueryDuration.End, time.Now().Location())
+	end, err := ParseSkyWalkingTimeFormat(c.QueryDuration.End)
 	if err != nil {
 		return nil, err
 	}
 
 	return &spanstore.TraceQueryParameters{
-		//ServiceName:
-		//OperationName:    "callSample",
-		StartTimeMin: start,
-		StartTimeMax: end,
-		DurationMin:  time.Duration(c.MinTraceDuration) * time.Millisecond,
-		DurationMax:  time.Duration(c.MaxTraceDuration) * time.Millisecond,
-		NumTraces:    5000, //at most get 5000
+		ServiceName:   c.ApplicationName,
+		OperationName: c.OperationName,
+		StartTimeMin:  start,
+		StartTimeMax:  end,
+		DurationMin:   time.Duration(c.MinTraceDuration) * time.Millisecond,
+		DurationMax:   time.Duration(c.MaxTraceDuration) * time.Millisecond,
+		NumTraces:     5000, //at most get 5000
 	}, nil
 }
 
@@ -119,6 +121,12 @@ var GLTraceQueryConditionType = graphql.NewInputObject(graphql.InputObjectConfig
 	Name: "TraceQueryCondition",
 	//Description: "",
 	Fields: graphql.InputObjectConfigFieldMap{
+		"applicationId": &graphql.InputObjectFieldConfig{
+			Type: graphql.String,
+		},
+		"operationName": &graphql.InputObjectFieldConfig{
+			Type: graphql.String,
+		},
 		"maxTraceDuration": &graphql.InputObjectFieldConfig{
 			Type: graphql.Int,
 		},

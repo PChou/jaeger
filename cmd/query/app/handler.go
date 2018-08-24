@@ -162,17 +162,32 @@ func NewAPIHandler(spanReader spanstore.Reader, dependencyReader dependencystore
 	var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 		Name: "RootQuery",
 		Fields: graphql.Fields{
-			"serviceList": &graphql.Field{
-				Type:        graphql.NewList(serviceType),
+			"applicationList": &graphql.Field{
+				Type: graphql.NewList(serviceType),
+				Args: graphql.FieldConfigArgument{
+					"duration": &graphql.ArgumentConfig{
+						Type: gl.GLDurationType,
+					},
+				},
 				Description: "List of services",
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					services, err := aH.spanReader.GetServices()
+					var durationParams gl.Duration
+					err := mapstructure.Decode(p.Args["duration"], &durationParams)
+					if err != nil {
+						return nil, err
+					}
+					extReader := aH.spanReader.(spanstore.ExtReader)
+					params, err := durationParams.ToApplicationQueryParameters()
+					if err != nil {
+						return nil, err
+					}
+					applications, err := extReader.GetApplications(params)
 					if err != nil {
 						return []interface{}{}, err
 					}
 
 					servicesWrap := make([]Service, 0)
-					for _, service := range services {
+					for _, service := range applications {
 						servicesWrap = append(servicesWrap, Service{Name: service})
 					}
 					return servicesWrap, nil
@@ -317,6 +332,7 @@ func (aH *APIHandler) RegisterRoutes(router *mux.Router) {
 
 	aH.handleFunc(router, aH.doGraphQL, "/graphql").Methods(http.MethodPost)
 	aH.handleFunc(router, aH.doGraphQL, "/trace").Methods(http.MethodPost)
+	aH.handleFunc(router, aH.doGraphQL, "/trace/options").Methods(http.MethodPost)
 	aH.handleFunc(router, aH.doGraphQL, "/span").Methods(http.MethodPost)
 	aH.handleFunc(router, aH.doGraphQL, "/dashboard").Methods(http.MethodPost)
 }

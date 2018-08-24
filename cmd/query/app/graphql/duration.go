@@ -33,11 +33,11 @@ var GLDurationType = graphql.NewInputObject(graphql.InputObjectConfig{
 })
 
 func (d Duration) ToThermoDynamicQueryParameters() (*spanstore.ThermoDynamicQueryParameters, error) {
-	start, err := time.ParseInLocation("2006-1-2 15:4", d.Start, time.Now().Location())
+	start, err := ParseSkyWalkingTimeFormat(d.Start)
 	if err != nil {
 		return nil, err
 	}
-	end, err := time.ParseInLocation("2006-1-2 15:4", d.End, time.Now().Location())
+	end, err := ParseSkyWalkingTimeFormat(d.End)
 	if err != nil {
 		return nil, err
 	}
@@ -52,5 +52,21 @@ func (d Duration) ToThermoDynamicQueryParameters() (*spanstore.ThermoDynamicQuer
 		DurationInterval:        time.Millisecond * 500,
 		DurationExtendBoundsMin: 0,
 		DurationExtendBoundsMax: time.Millisecond * 3000,
+	}, nil
+}
+
+func (d Duration) ToApplicationQueryParameters() (*spanstore.ApplicationQueryParameter, error) {
+	start, err := ParseSkyWalkingTimeFormat(d.Start)
+	if err != nil {
+		return nil, err
+	}
+	end, err := ParseSkyWalkingTimeFormat(d.End)
+	if err != nil {
+		return nil, err
+	}
+
+	return &spanstore.ApplicationQueryParameter{
+		StartTimeMin: start,
+		StartTimeMax: end,
 	}, nil
 }

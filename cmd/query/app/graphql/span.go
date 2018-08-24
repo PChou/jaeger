@@ -80,7 +80,7 @@ var GLSpanType = graphql.NewObject(
 				Type: graphql.NewList(GLReferenceType),
 			},
 			"startTime": &graphql.Field{
-				Type: graphql.Int,
+				Type: graphql.Float,
 			},
 			"duration": &graphql.Field{
 				Type: graphql.Int,

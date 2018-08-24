@@ -565,3 +565,8 @@ func (s *SpanReader) GetThermoDynamic(query *spanstore.ThermoDynamicQueryParamet
 	//fmt.Println(string(b))
 	return retMe, nil
 }
+
+func (s *SpanReader) GetApplications(query *spanstore.ApplicationQueryParameter) ([]string, error) {
+	serviceIndices := findIndices(serviceIndexPrefix, query.StartTimeMin, query.StartTimeMax)
+	return s.serviceOperationStorage.getServices(serviceIndices)
+}

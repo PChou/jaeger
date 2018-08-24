@@ -113,3 +113,13 @@ func (m *ReadMetricsDecorator) GetThermoDynamic(query *spanstore.ThermoDynamicQu
 	}
 	return nil, errors.New("Not implement ExtReader")
 }
+
+//  implements spanstore.ExtReader#GetApplications
+func (m *ReadMetricsDecorator) GetApplications(query *spanstore.ApplicationQueryParameter) ([]string, error) {
+	//start := time.Now()
+	//defer m.getOperationsMetrics.emit(err, time.Since(start), len(retMe))
+	if sr, ok := m.spanReader.(spanstore.ExtReader); ok {
+		return sr.GetApplications(query)
+	}
+	return nil, errors.New("Not implement ExtReader")
+}

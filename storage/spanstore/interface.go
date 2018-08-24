@@ -39,11 +39,6 @@ type Reader interface {
 	FindTraces(query *TraceQueryParameters) ([]*model.Trace, error)
 }
 
-// ExtReader used to support more complex query, like thermodynamic graph
-type ExtReader interface {
-	GetThermoDynamic(query *ThermoDynamicQueryParameters) (*model.ThermoDynamic, error)
-}
-
 // TraceQueryParameters contains parameters of a trace query.
 type TraceQueryParameters struct {
 	ServiceName   string
@@ -54,15 +49,4 @@ type TraceQueryParameters struct {
 	DurationMin   time.Duration
 	DurationMax   time.Duration
 	NumTraces     int
-}
-
-type ThermoDynamicQueryParameters struct {
-	ServiceName             string
-	OperationName           string
-	StartTimeMin            time.Time
-	StartTimeMax            time.Time
-	TimeInterval            time.Duration
-	DurationInterval        time.Duration
-	DurationExtendBoundsMin time.Duration
-	DurationExtendBoundsMax time.Duration
 }
