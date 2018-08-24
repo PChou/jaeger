@@ -70,3 +70,19 @@ func (d Duration) ToApplicationQueryParameters() (*spanstore.ApplicationQueryPar
 		StartTimeMax: end,
 	}, nil
 }
+
+func (d Duration) ToTrendsQueryParameters() (*spanstore.TrendsQueryParameters, error) {
+	start, err := ParseSkyWalkingTimeFormat(d.Start)
+	if err != nil {
+		return nil, err
+	}
+	end, err := ParseSkyWalkingTimeFormat(d.End)
+	if err != nil {
+		return nil, err
+	}
+
+	return &spanstore.TrendsQueryParameters{
+		StartTimeMin: start,
+		StartTimeMax: end,
+	}, nil
+}

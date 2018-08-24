@@ -6,8 +6,9 @@
 /api/graphql
 /api/trace
 /api/trace/options
-/span
-/dashboard
+/api/spans
+/api/dashboard
+/api/service
 ```
 
 # 查询Application
@@ -177,3 +178,21 @@ return &spanstore.ThermoDynamicQueryParameters{
 ```
 
 返回结果跟trace列表相同
+
+
+# 查询吞吐量
+
+按一个时间范围，服务（Operation）查询这个时间范围内，按分钟统计的吞吐量（即查询span的个数）
+
+```json
+{
+	"query": "query q($serviceId: ID!, $duration: Duration!) { trends(serviceId: $serviceId, duration: $duration) { trendList }}",
+	"variables": { "duration":{ "start": "2018-08-22 13:15", "end": "2018-08-22 13:30", "step": "MUNITE"  }, "serviceId":"/sample"  }
+}
+```
+
+返回结果示例
+
+```json
+{"data":{"trends":{"trendList":[0,0,0,0,4,7,4,7,4,8,7,7,7,2,0,0]}}}
+```

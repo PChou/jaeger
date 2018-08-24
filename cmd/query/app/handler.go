@@ -256,7 +256,6 @@ func NewAPIHandler(spanReader spanstore.Reader, dependencyReader dependencystore
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 					var condition gl.TraceQueryCondition
 					err := mapstructure.Decode(p.Args["condition"], &condition)
-					fmt.Println(condition)
 					params, err := condition.ToTraceQueryParameters()
 					if err != nil {
 						return nil, err
@@ -305,6 +304,39 @@ func NewAPIHandler(spanReader spanstore.Reader, dependencyReader dependencystore
 					return nil, errors.New("Invalid traceId")
 				},
 			},
+			"trends": &graphql.Field{
+				Type: gl.GLTrendListType,
+				Args: graphql.FieldConfigArgument{
+					"serviceId": &graphql.ArgumentConfig{
+						Type: graphql.ID,
+					},
+					"duration": &graphql.ArgumentConfig{
+						Type: gl.GLDurationType,
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					var durationParams gl.Duration
+					err := mapstructure.Decode(p.Args["duration"], &durationParams)
+					if err != nil {
+						return nil, err
+					}
+					params, err := durationParams.ToTrendsQueryParameters()
+					if err != nil {
+						return nil, err
+					}
+					extReader := aH.spanReader.(spanstore.ExtReader)
+					if serviceId, ok := p.Args["serviceId"].(string); ok {
+						params.OperationName = serviceId
+						params.TimeInterval = time.Minute
+						ts, err := extReader.GetTrends(params)
+						if err != nil {
+							return nil, err
+						}
+						return gl.Trends{TrendList: ts}, nil
+					}
+					return nil, errors.New("Invalid traceId")
+				},
+			},
 		},
 	})
 
@@ -330,11 +362,13 @@ func (aH *APIHandler) RegisterRoutes(router *mux.Router) {
 	aH.handleFunc(router, aH.getOperationsLegacy, "/services/{%s}/operations", serviceParam).Methods(http.MethodGet)
 	aH.handleFunc(router, aH.dependencies, "/dependencies").Methods(http.MethodGet)
 
+	//graphql route
 	aH.handleFunc(router, aH.doGraphQL, "/graphql").Methods(http.MethodPost)
 	aH.handleFunc(router, aH.doGraphQL, "/trace").Methods(http.MethodPost)
 	aH.handleFunc(router, aH.doGraphQL, "/trace/options").Methods(http.MethodPost)
-	aH.handleFunc(router, aH.doGraphQL, "/span").Methods(http.MethodPost)
+	aH.handleFunc(router, aH.doGraphQL, "/spans").Methods(http.MethodPost)
 	aH.handleFunc(router, aH.doGraphQL, "/dashboard").Methods(http.MethodPost)
+	aH.handleFunc(router, aH.doGraphQL, "/service").Methods(http.MethodPost)
 }
 
 func (aH *APIHandler) handleFunc(

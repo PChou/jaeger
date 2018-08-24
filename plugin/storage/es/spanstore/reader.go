@@ -49,6 +49,12 @@ const (
 	tagKeyField        = "key"
 	tagValueField      = "value"
 
+	//Service Count: span.layer =
+	//DB Count: span.layer = db and group by peer
+	//Cache Count: span.layer = cache and group by peer
+	tagLayerKeyField = "span.layer"
+	tagPeerKeyField  = "peer"
+
 	defaultDocCount  = 10000 // the default elasticsearch allowed limit
 	defaultNumTraces = 100
 )
@@ -569,4 +575,47 @@ func (s *SpanReader) GetThermoDynamic(query *spanstore.ThermoDynamicQueryParamet
 func (s *SpanReader) GetApplications(query *spanstore.ApplicationQueryParameter) ([]string, error) {
 	serviceIndices := findIndices(serviceIndexPrefix, query.StartTimeMin, query.StartTimeMax)
 	return s.serviceOperationStorage.getServices(serviceIndices)
+}
+
+func (s *SpanReader) GetTrends(query *spanstore.TrendsQueryParameters) ([]int, error) {
+	minStartTimeMilli := model.TimeAsEpochMilliseconds(query.StartTimeMin)
+	maxStartTimeMilli := model.TimeAsEpochMilliseconds(query.StartTimeMax)
+	timeRange := elastic.NewRangeQuery("startTimeMillis").Gte(minStartTimeMilli).Lte(maxStartTimeMilli)
+	whereQuery := elastic.NewBoolQuery().Must(timeRange)
+	if query.ServiceName != "" {
+		whereQuery.Must(elastic.NewMatchQuery("process.serviceName", query.ServiceName))
+	}
+	if query.OperationName != "" {
+		whereQuery.Must(elastic.NewMatchQuery("operationName", query.OperationName))
+	}
+
+	timeAgg := elastic.NewHistogramAggregation().
+		Field("startTimeMillis").
+		Interval(float64(query.TimeInterval/time.Millisecond)).
+		ExtendedBounds(float64(minStartTimeMilli), float64(maxStartTimeMilli))
+
+	jaegerIndices := findIndices(spanIndexPrefix, query.StartTimeMin, query.StartTimeMax)
+	searchService := s.client.Search(jaegerIndices...).
+		Type(spanType).
+		Size(0). // set to 0 because we don't want actual documents.
+		Aggregation("date_histogram", timeAgg).
+		IgnoreUnavailable(true).
+		Query(whereQuery)
+
+	searchResult, err := searchService.Do(s.ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "Search service failed")
+	}
+	timeBulket, found := searchResult.Aggregations.Terms("date_histogram")
+	if !found {
+		return nil, errors.New("Counld not found bucket by date_histogram")
+	}
+
+	retMe := make([]int, len(timeBulket.Buckets))
+	for i, b := range timeBulket.Buckets {
+		retMe[i] = int(b.DocCount)
+	}
+	b, _ := json.Marshal(searchResult)
+	fmt.Println(string(b))
+	return retMe, nil
 }

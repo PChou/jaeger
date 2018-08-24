@@ -24,6 +24,7 @@ import (
 type ExtReader interface {
 	GetApplications(query *ApplicationQueryParameter) ([]string, error)
 	GetThermoDynamic(query *ThermoDynamicQueryParameters) (*model.ThermoDynamic, error)
+	GetTrends(query *TrendsQueryParameters) ([]int, error)
 }
 
 type ThermoDynamicQueryParameters struct {
@@ -35,6 +36,14 @@ type ThermoDynamicQueryParameters struct {
 	DurationInterval        time.Duration
 	DurationExtendBoundsMin time.Duration
 	DurationExtendBoundsMax time.Duration
+}
+
+type TrendsQueryParameters struct {
+	ServiceName   string
+	OperationName string
+	StartTimeMin  time.Time
+	StartTimeMax  time.Time
+	TimeInterval  time.Duration
 }
 
 type ApplicationQueryParameter struct {

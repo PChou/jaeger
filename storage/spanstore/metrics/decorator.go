@@ -123,3 +123,12 @@ func (m *ReadMetricsDecorator) GetApplications(query *spanstore.ApplicationQuery
 	}
 	return nil, errors.New("Not implement ExtReader")
 }
+
+func (m *ReadMetricsDecorator) GetTrends(query *spanstore.TrendsQueryParameters) ([]int, error) {
+	//start := time.Now()
+	//defer m.getOperationsMetrics.emit(err, time.Since(start), len(retMe))
+	if sr, ok := m.spanReader.(spanstore.ExtReader); ok {
+		return sr.GetTrends(query)
+	}
+	return nil, errors.New("Not implement ExtReader")
+}
