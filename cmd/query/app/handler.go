@@ -254,7 +254,6 @@ func NewAPIHandler(spanReader spanstore.Reader, dependencyReader dependencystore
 					for i, v := range traces {
 						uiTrace, uiErr := aH.convertModelToUI(v, true)
 						if uiErr != nil {
-							fmt.Println(uiErr)
 							continue
 						}
 						uiTraces[i] = uiTrace
@@ -264,6 +263,31 @@ func NewAPIHandler(spanReader spanstore.Reader, dependencyReader dependencystore
 						Total:  len(traces),
 						Traces: uiTraces,
 					}, nil
+				},
+			},
+			"trace": &graphql.Field{
+				Type: gl.GLTraceType,
+				Args: graphql.FieldConfigArgument{
+					"traceId": &graphql.ArgumentConfig{
+						//DefaultValue:
+						//Description:
+						Type: graphql.ID,
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					if traceId, ok := p.Args["traceId"].(string); ok {
+						modeTraceId, err := model.TraceIDFromString(traceId)
+						if err != nil {
+							return nil, errors.New("Invalid traceId")
+						}
+						trace, err := aH.spanReader.GetTrace(modeTraceId)
+						uiTrace, uiErr := aH.convertModelToUI(trace, true)
+						if uiErr != nil {
+							return nil, errors.New(uiErr.Msg)
+						}
+						return uiTrace, nil
+					}
+					return nil, errors.New("Invalid traceId")
 				},
 			},
 		},
@@ -293,6 +317,7 @@ func (aH *APIHandler) RegisterRoutes(router *mux.Router) {
 
 	aH.handleFunc(router, aH.doGraphQL, "/graphql").Methods(http.MethodPost)
 	aH.handleFunc(router, aH.doGraphQL, "/trace").Methods(http.MethodPost)
+	aH.handleFunc(router, aH.doGraphQL, "/span").Methods(http.MethodPost)
 	aH.handleFunc(router, aH.doGraphQL, "/dashboard").Methods(http.MethodPost)
 }
 
