@@ -577,7 +577,7 @@ func (s *SpanReader) GetApplications(query *spanstore.ApplicationQueryParameter)
 	return s.serviceOperationStorage.getServices(serviceIndices)
 }
 
-func (s *SpanReader) GetTrends(query *spanstore.TrendsQueryParameters) ([]int, error) {
+func (s *SpanReader) GetServiceThroughput(query *spanstore.TrendsQueryParameters) ([]int, error) {
 	minStartTimeMilli := model.TimeAsEpochMilliseconds(query.StartTimeMin)
 	maxStartTimeMilli := model.TimeAsEpochMilliseconds(query.StartTimeMax)
 	timeRange := elastic.NewRangeQuery("startTimeMillis").Gte(minStartTimeMilli).Lte(maxStartTimeMilli)
@@ -614,6 +614,61 @@ func (s *SpanReader) GetTrends(query *spanstore.TrendsQueryParameters) ([]int, e
 	retMe := make([]int, len(timeBulket.Buckets))
 	for i, b := range timeBulket.Buckets {
 		retMe[i] = int(b.DocCount)
+	}
+	// b, _ := json.Marshal(searchResult)
+	// fmt.Println(string(b))
+	return retMe, nil
+}
+
+func (s *SpanReader) GetServiceResponseTime(query *spanstore.TrendsQueryParameters) ([]float64, error) {
+	minStartTimeMilli := model.TimeAsEpochMilliseconds(query.StartTimeMin)
+	maxStartTimeMilli := model.TimeAsEpochMilliseconds(query.StartTimeMax)
+	timeRange := elastic.NewRangeQuery("startTimeMillis").Gte(minStartTimeMilli).Lte(maxStartTimeMilli)
+	whereQuery := elastic.NewBoolQuery().Must(timeRange)
+	if query.ServiceName != "" {
+		whereQuery.Must(elastic.NewMatchQuery("process.serviceName", query.ServiceName))
+	}
+	if query.OperationName != "" {
+		whereQuery.Must(elastic.NewMatchQuery("operationName", query.OperationName))
+	}
+
+	avgAgg := elastic.NewAvgAggregation().Field("duration")
+
+	timeAgg := elastic.NewHistogramAggregation().
+		Field("startTimeMillis").
+		Interval(float64(query.TimeInterval/time.Millisecond)).
+		ExtendedBounds(float64(minStartTimeMilli), float64(maxStartTimeMilli)).
+		SubAggregation("duration_avg", avgAgg)
+
+	jaegerIndices := findIndices(spanIndexPrefix, query.StartTimeMin, query.StartTimeMax)
+	searchService := s.client.Search(jaegerIndices...).
+		Type(spanType).
+		Size(0). // set to 0 because we don't want actual documents.
+		Aggregation("date_histogram", timeAgg).
+		IgnoreUnavailable(true).
+		Query(whereQuery)
+
+	searchResult, err := searchService.Do(s.ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "Search service failed")
+	}
+	timeBulket, found := searchResult.Aggregations.Terms("date_histogram")
+	if !found {
+		return nil, errors.New("Counld not found bucket by date_histogram")
+	}
+
+	retMe := make([]float64, len(timeBulket.Buckets))
+	for i, b := range timeBulket.Buckets {
+		if b.DocCount == 0 {
+			retMe[i] = 0
+		} else {
+			avg, found := b.Avg("duration_avg")
+			if !found {
+				retMe[i] = 0
+			} else {
+				retMe[i] = *avg.Value
+			}
+		}
 	}
 	b, _ := json.Marshal(searchResult)
 	fmt.Println(string(b))

@@ -304,7 +304,7 @@ func NewAPIHandler(spanReader spanstore.Reader, dependencyReader dependencystore
 					return nil, errors.New("Invalid traceId")
 				},
 			},
-			"trends": &graphql.Field{
+			"throughput": &graphql.Field{
 				Type: gl.GLTrendListType,
 				Args: graphql.FieldConfigArgument{
 					"serviceId": &graphql.ArgumentConfig{
@@ -328,11 +328,50 @@ func NewAPIHandler(spanReader spanstore.Reader, dependencyReader dependencystore
 					if serviceId, ok := p.Args["serviceId"].(string); ok {
 						params.OperationName = serviceId
 						params.TimeInterval = time.Minute
-						ts, err := extReader.GetTrends(params)
+						ts, err := extReader.GetServiceThroughput(params)
 						if err != nil {
 							return nil, err
 						}
 						return gl.Trends{TrendList: ts}, nil
+					}
+					return nil, errors.New("Invalid traceId")
+				},
+			},
+			"responseTime": &graphql.Field{
+				Type: gl.GLTrendListType,
+				Args: graphql.FieldConfigArgument{
+					"serviceId": &graphql.ArgumentConfig{
+						Type: graphql.ID,
+					},
+					"duration": &graphql.ArgumentConfig{
+						Type: gl.GLDurationType,
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					var durationParams gl.Duration
+					err := mapstructure.Decode(p.Args["duration"], &durationParams)
+					if err != nil {
+						return nil, err
+					}
+					params, err := durationParams.ToTrendsQueryParameters()
+					if err != nil {
+						return nil, err
+					}
+					extReader := aH.spanReader.(spanstore.ExtReader)
+					if serviceId, ok := p.Args["serviceId"].(string); ok {
+						params.OperationName = serviceId
+						params.TimeInterval = time.Minute
+						ts, err := extReader.GetServiceResponseTime(params)
+						if err != nil {
+							return nil, err
+						}
+						retMe := gl.Trends{}
+						retMe.TrendList = make([]int, len(ts))
+						for i, float := range ts {
+							retMe.TrendList[i] = int(float / 1000) //convert to milli
+						}
+
+						return retMe, nil
 					}
 					return nil, errors.New("Invalid traceId")
 				},

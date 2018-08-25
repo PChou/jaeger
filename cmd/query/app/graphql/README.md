@@ -186,7 +186,7 @@ return &spanstore.ThermoDynamicQueryParameters{
 
 ```json
 {
-	"query": "query q($serviceId: ID!, $duration: Duration!) { trends(serviceId: $serviceId, duration: $duration) { trendList }}",
+	"query": "query q($serviceId: ID!, $duration: Duration!) { throughput(serviceId: $serviceId, duration: $duration) { trendList }}",
 	"variables": { "duration":{ "start": "2018-08-22 13:15", "end": "2018-08-22 13:30", "step": "MUNITE"  }, "serviceId":"/sample"  }
 }
 ```
@@ -194,5 +194,22 @@ return &spanstore.ThermoDynamicQueryParameters{
 返回结果示例
 
 ```json
-{"data":{"trends":{"trendList":[0,0,0,0,4,7,4,7,4,8,7,7,7,2,0,0]}}}
+{"data":{"throughout":{"trendList":[0,0,0,0,4,7,4,7,4,8,7,7,7,2,0,0]}}}
+```
+
+# 查询平均响应时间
+
+按一个时间范围，服务（Operation）查询这个时间范围内，按分钟统计的平均响应时间
+
+```json
+{
+	"query": "query q($serviceId: ID!, $duration: Duration!) { responseTime(serviceId: $serviceId, duration: $duration) { trendList }}",
+	"variables": { "duration":{ "start": "2018-08-22 13:15", "end": "2018-08-22 13:30", "step": "MUNITE"  }, "serviceId":"/sample"  }
+}
+```
+
+返回结果示例
+
+```json
+{"data":{"responseTime":{"trendList":[0,0,0,0,1002,1297,1343,1336,1631,1663,1598,1433,1715,1190,0,0]}}}
 ```
