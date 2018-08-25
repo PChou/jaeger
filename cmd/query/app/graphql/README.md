@@ -213,3 +213,37 @@ return &spanstore.ThermoDynamicQueryParameters{
 ```json
 {"data":{"responseTime":{"trendList":[0,0,0,0,1002,1297,1343,1336,1631,1663,1598,1433,1715,1190,0,0]}}}
 ```
+
+# 查询数据库信息
+
+查询当前数据库类型的服务数量和对端信息
+
+```json
+{
+	"query": "query q($duration: Duration!) { dbInfo(duration: $duration) { count, peers } }",
+	"variables": { "duration":{ "start": "2018-08-22 13:15", "end": "2018-08-22 13:30", "step": "MUNITE"  } }
+}
+```
+
+返回结果示例
+
+```json
+{"data":{"dbInfo":{"count":2,"peers":["192.168.31.102:3306","192.168.31.103:3306"]}}}
+```
+
+# 查询缓存信息
+
+查询当前缓存类型的服务数量和对端信息
+
+```json
+{
+	"query": "query q($duration: Duration!) { cacheInfo(duration: $duration) { count, peers } }",
+	"variables": { "duration":{ "start": "2018-08-22 13:15", "end": "2018-08-22 13:30", "step": "MUNITE"  } }
+}
+```
+
+返回结果示例
+
+```json
+{"data":{"cacheInfo":{"count":2,"peers":["192.168.31.102:6397","192.168.31.100:6397"]}}}
+```

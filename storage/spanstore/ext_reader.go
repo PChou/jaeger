@@ -26,6 +26,8 @@ type ExtReader interface {
 	GetThermoDynamic(query *ThermoDynamicQueryParameters) (*model.ThermoDynamic, error)
 	GetServiceThroughput(query *TrendsQueryParameters) ([]int, error)
 	GetServiceResponseTime(query *TrendsQueryParameters) ([]float64, error)
+	GetCaches(query *ApplicationQueryParameter) ([]string, error)
+	GetDbs(query *ApplicationQueryParameter) ([]string, error)
 }
 
 type ThermoDynamicQueryParameters struct {

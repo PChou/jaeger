@@ -376,6 +376,62 @@ func NewAPIHandler(spanReader spanstore.Reader, dependencyReader dependencystore
 					return nil, errors.New("Invalid traceId")
 				},
 			},
+			"cacheInfo": &graphql.Field{
+				Type: gl.GLPeersType,
+				Args: graphql.FieldConfigArgument{
+					"duration": &graphql.ArgumentConfig{
+						Type: gl.GLDurationType,
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					var durationParams gl.Duration
+					err := mapstructure.Decode(p.Args["duration"], &durationParams)
+					if err != nil {
+						return nil, err
+					}
+					params, err := durationParams.ToApplicationQueryParameters()
+					if err != nil {
+						return nil, err
+					}
+					extReader := aH.spanReader.(spanstore.ExtReader)
+					peers, err := extReader.GetCaches(params)
+					if err != nil {
+						return nil, err
+					}
+					return gl.PeersInfo{
+						Count: len(peers),
+						Peers: peers,
+					}, nil
+				},
+			},
+			"dbInfo": &graphql.Field{
+				Type: gl.GLPeersType,
+				Args: graphql.FieldConfigArgument{
+					"duration": &graphql.ArgumentConfig{
+						Type: gl.GLDurationType,
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					var durationParams gl.Duration
+					err := mapstructure.Decode(p.Args["duration"], &durationParams)
+					if err != nil {
+						return nil, err
+					}
+					params, err := durationParams.ToApplicationQueryParameters()
+					if err != nil {
+						return nil, err
+					}
+					extReader := aH.spanReader.(spanstore.ExtReader)
+					peers, err := extReader.GetDbs(params)
+					if err != nil {
+						return nil, err
+					}
+					return gl.PeersInfo{
+						Count: len(peers),
+						Peers: peers,
+					}, nil
+				},
+			},
 		},
 	})
 

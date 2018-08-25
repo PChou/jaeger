@@ -141,3 +141,21 @@ func (m *ReadMetricsDecorator) GetServiceResponseTime(query *spanstore.TrendsQue
 	}
 	return nil, errors.New("Not implement ExtReader")
 }
+
+func (m *ReadMetricsDecorator) GetCaches(query *spanstore.ApplicationQueryParameter) ([]string, error) {
+	//start := time.Now()
+	//defer m.getOperationsMetrics.emit(err, time.Since(start), len(retMe))
+	if sr, ok := m.spanReader.(spanstore.ExtReader); ok {
+		return sr.GetCaches(query)
+	}
+	return nil, errors.New("Not implement ExtReader")
+}
+
+func (m *ReadMetricsDecorator) GetDbs(query *spanstore.ApplicationQueryParameter) ([]string, error) {
+	//start := time.Now()
+	//defer m.getOperationsMetrics.emit(err, time.Since(start), len(retMe))
+	if sr, ok := m.spanReader.(spanstore.ExtReader); ok {
+		return sr.GetDbs(query)
+	}
+	return nil, errors.New("Not implement ExtReader")
+}

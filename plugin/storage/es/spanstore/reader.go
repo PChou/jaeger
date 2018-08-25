@@ -674,3 +674,52 @@ func (s *SpanReader) GetServiceResponseTime(query *spanstore.TrendsQueryParamete
 	fmt.Println(string(b))
 	return retMe, nil
 }
+
+func (s *SpanReader) getPeersByLayer(query *spanstore.ApplicationQueryParameter, layer string) ([]string, error) {
+	minStartTimeMilli := model.TimeAsEpochMilliseconds(query.StartTimeMin)
+	maxStartTimeMilli := model.TimeAsEpochMilliseconds(query.StartTimeMax)
+	timeRange := elastic.NewRangeQuery("startTimeMillis").Gte(minStartTimeMilli).Lte(maxStartTimeMilli)
+	whereQuery := elastic.NewBoolQuery().Must(timeRange)
+
+	whereQuery.Must(s.buildNestedQuery("tags", "span.layer", layer))
+	script := elastic.NewScriptInline("for (int i = 0; i < doc['tags.key'].length; ++i){ if(doc['tags.key'][i] == 'peer') return doc['tags.value'][i]; } return ''").Lang("painless")
+	termsAgg := elastic.NewTermsAggregation().Script(script)
+	nestedAgg := elastic.NewNestedAggregation().Path("tags").SubAggregation("terms", termsAgg)
+
+	jaegerIndices := findIndices(spanIndexPrefix, query.StartTimeMin, query.StartTimeMax)
+	searchService := s.client.Search(jaegerIndices...).
+		Type(spanType).
+		Size(0). // set to 0 because we don't want actual documents.
+		Aggregation("aggs", nestedAgg).
+		IgnoreUnavailable(true).
+		Query(whereQuery)
+
+	searchResult, err := searchService.Do(s.ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "Search service failed")
+	}
+	bucket, found := searchResult.Aggregations.Terms("aggs")
+	if !found {
+		return nil, errors.New("Counld not found bucket by aggs")
+	}
+	subBucket, found := bucket.Terms("terms")
+	if !found {
+		return nil, errors.New("Counld not found bucket by terms")
+	}
+
+	retMe := make([]string, len(subBucket.Buckets))
+	for i, b := range subBucket.Buckets {
+		retMe[i] = fmt.Sprintf("%v", b.Key)
+	}
+	b, _ := json.Marshal(searchResult)
+	fmt.Println(string(b))
+	return retMe, nil
+}
+
+func (s *SpanReader) GetCaches(query *spanstore.ApplicationQueryParameter) ([]string, error) {
+	return s.getPeersByLayer(query, "cache")
+}
+
+func (s *SpanReader) GetDbs(query *spanstore.ApplicationQueryParameter) ([]string, error) {
+	return s.getPeersByLayer(query, "db")
+}
