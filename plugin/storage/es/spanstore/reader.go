@@ -533,7 +533,7 @@ func (s *SpanReader) GetThermoDynamic(query *spanstore.ThermoDynamicQueryParamet
 		ExtendedBounds(float64(minStartTimeMilli), float64(maxStartTimeMilli)).
 		SubAggregation("histogram", durationAgg)
 
-	jaegerIndices := findIndices(spanIndexPrefix, query.StartTimeMin, query.StartTimeMax)
+	jaegerIndices := s.indicesForTimeRange(s.spanIndexPrefix, query.StartTimeMin, query.StartTimeMax)
 	searchService := s.client.Search(jaegerIndices...).
 		Type(spanType).
 		Size(0). // set to 0 because we don't want actual documents.
@@ -573,7 +573,7 @@ func (s *SpanReader) GetThermoDynamic(query *spanstore.ThermoDynamicQueryParamet
 }
 
 func (s *SpanReader) GetApplications(query *spanstore.ApplicationQueryParameter) ([]string, error) {
-	serviceIndices := findIndices(serviceIndexPrefix, query.StartTimeMin, query.StartTimeMax)
+	serviceIndices := s.indicesForTimeRange(s.serviceIndexPrefix, query.StartTimeMin, query.StartTimeMax)
 	return s.serviceOperationStorage.getServices(serviceIndices)
 }
 
@@ -594,7 +594,7 @@ func (s *SpanReader) GetServiceThroughput(query *spanstore.TrendsQueryParameters
 		Interval(float64(query.TimeInterval/time.Millisecond)).
 		ExtendedBounds(float64(minStartTimeMilli), float64(maxStartTimeMilli))
 
-	jaegerIndices := findIndices(spanIndexPrefix, query.StartTimeMin, query.StartTimeMax)
+	jaegerIndices := s.indicesForTimeRange(s.spanIndexPrefix, query.StartTimeMin, query.StartTimeMax)
 	searchService := s.client.Search(jaegerIndices...).
 		Type(spanType).
 		Size(0). // set to 0 because we don't want actual documents.
@@ -640,7 +640,7 @@ func (s *SpanReader) GetServiceResponseTime(query *spanstore.TrendsQueryParamete
 		ExtendedBounds(float64(minStartTimeMilli), float64(maxStartTimeMilli)).
 		SubAggregation("duration_avg", avgAgg)
 
-	jaegerIndices := findIndices(spanIndexPrefix, query.StartTimeMin, query.StartTimeMax)
+	jaegerIndices := s.indicesForTimeRange(s.spanIndexPrefix, query.StartTimeMin, query.StartTimeMax)
 	searchService := s.client.Search(jaegerIndices...).
 		Type(spanType).
 		Size(0). // set to 0 because we don't want actual documents.
@@ -686,7 +686,7 @@ func (s *SpanReader) getPeersByLayer(query *spanstore.ApplicationQueryParameter,
 	termsAgg := elastic.NewTermsAggregation().Script(script)
 	nestedAgg := elastic.NewNestedAggregation().Path("tags").SubAggregation("terms", termsAgg)
 
-	jaegerIndices := findIndices(spanIndexPrefix, query.StartTimeMin, query.StartTimeMax)
+	jaegerIndices := s.indicesForTimeRange(s.spanIndexPrefix, query.StartTimeMin, query.StartTimeMax)
 	searchService := s.client.Search(jaegerIndices...).
 		Type(spanType).
 		Size(0). // set to 0 because we don't want actual documents.
