@@ -74,7 +74,8 @@ type Service struct {
 // works around this issue, enabling timerange queries.
 type Span struct {
 	*jModel.Span
-	StartTimeMillis uint64 `json:"startTimeMillis"`
+	StartTimeMillis uint64                 `json:"startTimeMillis"`
+	FlattenTags     map[string]interface{} `json:"flattenTags"`
 }
 
 func (s Service) hashCode() string {
@@ -197,8 +198,7 @@ func (s *SpanWriter) writeService(indexName string, jsonSpan *jModel.Span) {
 }
 
 func (s *SpanWriter) writeSpan(indexName string, jsonSpan *jModel.Span) {
-	elasticSpan := Span{Span: jsonSpan, StartTimeMillis: jsonSpan.StartTime / 1000} // Microseconds to milliseconds
-
+	elasticSpan := s.flattenTags(jsonSpan)
 	s.client.Index().Index(indexName).Type(spanType).BodyJson(&elasticSpan).Add()
 }
 
@@ -209,4 +209,22 @@ func (s *SpanWriter) logError(span *jModel.Span, err error, msg string, logger *
 		With(zap.Error(err)).
 		Error(msg)
 	return errors.Wrap(err, msg)
+}
+
+func (s *SpanWriter) flattenTags(jsonSpan *jModel.Span) Span {
+	elasticSpan := Span{Span: jsonSpan, StartTimeMillis: jsonSpan.StartTime / 1000} // Microseconds to milliseconds
+	elasticSpan.FlattenTags = make(map[string]interface{})
+
+	//flatten span level tags
+	for _, spanTag := range jsonSpan.Tags {
+		elasticSpan.FlattenTags[spanTag.Key] = spanTag.Value
+	}
+	//flatten process level tags
+	processLayer := make(map[string]interface{})
+	elasticSpan.FlattenTags["process"] = processLayer
+	for _, processTag := range jsonSpan.Process.Tags {
+		processLayer[processTag.Key] = processTag.Value
+	}
+
+	return elasticSpan
 }
