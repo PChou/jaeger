@@ -60,6 +60,11 @@ type Service struct {
 	Operations []gl.Operation `json:"operations"`
 }
 
+type ServiceList struct {
+	Services []Service `json:"apps"`
+	Count    int       `json:"count"`
+}
+
 type GraphQLPostBody struct {
 	Query     string                 `json:"query"`
 	Variables map[string]interface{} `json:"variables"`
@@ -131,7 +136,7 @@ func NewAPIHandler(spanReader spanstore.Reader, dependencyReader dependencystore
 		aH.tracer = opentracing.NoopTracer{}
 	}
 
-	var serviceType = graphql.NewObject(
+	var GLApplicationType = graphql.NewObject(
 		graphql.ObjectConfig{
 			Name: "Service",
 			Fields: graphql.Fields{
@@ -159,11 +164,25 @@ func NewAPIHandler(spanReader spanstore.Reader, dependencyReader dependencystore
 		},
 	)
 
+	var GLApplicationListType = graphql.NewObject(
+		graphql.ObjectConfig{
+			Name: "ApplicationList",
+			Fields: graphql.Fields{
+				"apps": &graphql.Field{
+					Type: graphql.NewList(GLApplicationType),
+				},
+				"count": &graphql.Field{
+					Type: graphql.Int,
+				},
+			},
+		},
+	)
+
 	var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 		Name: "RootQuery",
 		Fields: graphql.Fields{
 			"applicationList": &graphql.Field{
-				Type: graphql.NewList(serviceType),
+				Type: GLApplicationListType,
 				Args: graphql.FieldConfigArgument{
 					"duration": &graphql.ArgumentConfig{
 						Type: gl.GLDurationType,
@@ -190,11 +209,11 @@ func NewAPIHandler(spanReader spanstore.Reader, dependencyReader dependencystore
 					for _, service := range applications {
 						servicesWrap = append(servicesWrap, Service{Name: service})
 					}
-					return servicesWrap, nil
+					return ServiceList{Services: servicesWrap, Count: len(servicesWrap)}, nil
 				},
 			},
 			"service": &graphql.Field{
-				Type: serviceType,
+				Type: GLApplicationType,
 				Args: graphql.FieldConfigArgument{
 					"name": &graphql.ArgumentConfig{
 						//DefaultValue:

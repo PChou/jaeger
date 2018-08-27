@@ -15,7 +15,7 @@
 
 ```json
 {
-	"query": "query q($duration: Duration) { applicationList(duration: $duration) { name }}",
+	"query": "query q($duration: Duration) { applicationList(duration: $duration) { apps { name } count }}",
 	"variables": { "duration":{ "start": "2018-08-22 13:15", "end": "2018-08-22 13:30", "step": "MUNITE"  }  }
 }
 ```
@@ -25,27 +25,7 @@
 返回样例：
 
 ```json
-{
-    "data": {
-        "applicationList": [
-            {
-                "name": "gateway"
-            },
-            {
-                "name": "client"
-            },
-            {
-                "name": "query-service"
-            },
-            {
-                "name": "transfer-service"
-            },
-            {
-                "name": "jaeger-query"
-            }
-        ]
-    }
-}
+{"data":{"applicationList":{"apps":[{"name":"gateway"},{"name":"client"},{"name":"query-service"},{"name":"transfer-service"},{"name":"jaeger-query"}],"count":5}}}
 ```
 
 # 查询热力图
