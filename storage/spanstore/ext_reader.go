@@ -22,34 +22,76 @@ import (
 
 // ExtReader used to support more complex query, like thermodynamic graph
 type ExtReader interface {
-	GetApplications(query *ApplicationQueryParameter) ([]string, error)
+	GetApplications(query *BasicQueryParameters) ([]string, error)
+	GetLayerServices(query *LayerTypeQueryParameters) ([]string, error)
+	GetNodes(query *NodesQueryParameters) ([]string, error)
+	GetServiceTopResponseTime(query *ServiceTopResponseTimeQueryParameters) ([]*model.ServiceAvgResponseTime, error)
 	GetThermoDynamic(query *ThermoDynamicQueryParameters) (*model.ThermoDynamic, error)
-	GetServiceThroughput(query *TrendsQueryParameters) ([]int, error)
-	GetServiceResponseTime(query *TrendsQueryParameters) ([]float64, error)
-	GetCaches(query *ApplicationQueryParameter) ([]string, error)
-	GetDbs(query *ApplicationQueryParameter) ([]string, error)
+	GetApplicationTopThroughput(query *TopThroughputQueryParameters) ([]*model.ApplicationThroughput, error)
+	GetNodeTopThroughput(query *TopThroughputQueryParameters) ([]*model.NodeAvgThroughput, error)
+	GetResponseTimeTrends(query *ResponseTimeQueryParameters) ([]float64, error)
+	GetThroughputTrends(query *ThroughputQueryParameters) ([]int, error)
+
+	// GetApplications(query *BasicQueryParameters) ([]string, error)
+	// GetServiceThroughput(query *ThroughputQueryParameters) ([]int, error)
+	// GetServiceResponseTime(query *ResponseTimeQueryParameters) ([]float64, error)
+	// GetCaches(query *ApplicationQueryParameter) ([]string, error)
+	// GetDbs(query *ApplicationQueryParameter) ([]string, error)
+}
+
+// Basic query parameters contains StartTimeMin and StartTimeMax
+// Almost every query should contains the StartTime duration
+type BasicQueryParameters struct {
+	StartTimeMin time.Time
+	StartTimeMax time.Time
+}
+
+type LayerTypeQueryParameters struct {
+	BasicQueryParameters
+	ApplicationName string
+	Layer           string
+	Type            string
+	By              string
+}
+
+type ServiceTopResponseTimeQueryParameters struct {
+	BasicQueryParameters
+	ApplicationName string
+	Top             int
 }
 
 type ThermoDynamicQueryParameters struct {
-	ServiceName             string
-	OperationName           string
-	StartTimeMin            time.Time
-	StartTimeMax            time.Time
+	BasicQueryParameters
 	TimeInterval            time.Duration
 	DurationInterval        time.Duration
 	DurationExtendBoundsMin time.Duration
 	DurationExtendBoundsMax time.Duration
 }
 
-type TrendsQueryParameters struct {
-	ServiceName   string
-	OperationName string
-	StartTimeMin  time.Time
-	StartTimeMax  time.Time
-	TimeInterval  time.Duration
+type TopThroughputQueryParameters struct {
+	BasicQueryParameters
+	ApplicationName string
+	Top             int
 }
 
-type ApplicationQueryParameter struct {
-	StartTimeMin time.Time
-	StartTimeMax time.Time
+type ThroughputQueryParameters struct {
+	BasicQueryParameters
+	ApplicationName string
+	OperationName   string
+	Instance        string
+	TimeInterval    time.Duration
+}
+
+type ResponseTimeQueryParameters struct {
+	BasicQueryParameters
+	ApplicationName string
+	OperationName   string
+	Instance        string
+	TimeInterval    time.Duration
+}
+
+type NodesQueryParameters struct {
+	BasicQueryParameters
+	ApplicationName string
+	OperationName   string
 }

@@ -161,6 +161,10 @@ install: install-glide
 install-statik:
 	go get github.com/rakyll/statik
 
+.PHONY: install-graphdoc
+install-graphdoc:
+	npm install -g @2fd/graphdoc
+
 .PHONY: build-examples
 build-examples: install-statik
 	(cd examples/hotrod/services/frontend/ && statik -f --src web_assets)
@@ -171,13 +175,28 @@ docker-hotrod:
 	GOOS=linux $(MAKE) build-examples
 	docker build -t $(DOCKER_NAMESPACE)/example-hotrod:${DOCKER_TAG} ./examples/hotrod
 
-.PHONY: build_ui
-build_ui: install-statik
+.PHONY: build_jaeger_ui
+build_jaeger_ui:
 	cd jaeger-ui && yarn install && cd packages/jaeger-ui && yarn build
+
+.PHONY: build_graphql_doc
+build_graphql_doc: install-graphdoc
+	(mkdir -p jaeger-ui/packages/jaeger-ui/build/static; cd jaeger-ui/packages/jaeger-ui/build/static; graphdoc --force -e http://localhost:16686/api/graphql -o schema)
+
+.PHONY: build_ui
+build_ui: install-statik build_jaeger_ui
+	(cd cmd/query/app/ui/actual; statik -f -src ../../../../../jaeger-ui/packages/jaeger-ui/build)
+
+.PHONY: ui_inject
+ui_inject: install-statik
 	(cd cmd/query/app/ui/actual; statik -f -src ../../../../../jaeger-ui/packages/jaeger-ui/build)
 
 .PHONY: build-all-in-one-linux
 build-all-in-one-linux: build_ui
+	GOOS=linux $(MAKE) build-all-in-one
+
+.PHONY: build-all-in-one-linux-without-ui
+build-all-in-one-linux-without-ui:
 	GOOS=linux $(MAKE) build-all-in-one
 
 .PHONY: build-all-in-one

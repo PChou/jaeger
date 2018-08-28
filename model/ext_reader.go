@@ -18,3 +18,28 @@ type ThermoDynamic struct {
 	Nodes            [][3]int `json:"nodes"` //[[0, 0, 12], [0, 1, 0], ...]
 	ResponseTimeStep int      `json:"responseTimeStep"`
 }
+
+type Node struct {
+	Name string `json:"name"`
+}
+
+type ServiceAvgResponseTime struct {
+	ApplicatioName string  `json:"applicationName"`
+	ServiceName    string  `json:"serviceName"`
+	Value          float64 `json:"value"`
+}
+
+type ApplicationThroughput struct {
+	ApplicationName string  `json:"applicationName"`
+	Value           float64 `json:"value"`
+}
+
+type NodeAvgThroughput struct {
+	Node  string  `json:"node"`
+	Value float64 `json:"value"`
+}
+
+type NodeThroughput struct {
+	Node   string `json:"node"`
+	Values []int  `json:"throughput"`
+}

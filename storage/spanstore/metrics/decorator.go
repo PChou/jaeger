@@ -104,7 +104,33 @@ func (m *ReadMetricsDecorator) GetOperations(service string) ([]string, error) {
 	return retMe, err
 }
 
-//  implements spanstore.ExtReader#GetThermoDynamic
+func (m *ReadMetricsDecorator) GetApplications(query *spanstore.BasicQueryParameters) ([]string, error) {
+	//start := time.Now()
+	//defer m.getOperationsMetrics.emit(err, time.Since(start), len(retMe))
+	if sr, ok := m.spanReader.(spanstore.ExtReader); ok {
+		return sr.GetApplications(query)
+	}
+	return nil, errors.New("Not implement ExtReader")
+}
+
+func (m *ReadMetricsDecorator) GetLayerServices(query *spanstore.LayerTypeQueryParameters) ([]string, error) {
+	//start := time.Now()
+	//defer m.getOperationsMetrics.emit(err, time.Since(start), len(retMe))
+	if sr, ok := m.spanReader.(spanstore.ExtReader); ok {
+		return sr.GetLayerServices(query)
+	}
+	return nil, errors.New("Not implement ExtReader")
+}
+
+func (m *ReadMetricsDecorator) GetServiceTopResponseTime(query *spanstore.ServiceTopResponseTimeQueryParameters) ([]*model.ServiceAvgResponseTime, error) {
+	//start := time.Now()
+	//defer m.getOperationsMetrics.emit(err, time.Since(start), len(retMe))
+	if sr, ok := m.spanReader.(spanstore.ExtReader); ok {
+		return sr.GetServiceTopResponseTime(query)
+	}
+	return nil, errors.New("Not implement ExtReader")
+}
+
 func (m *ReadMetricsDecorator) GetThermoDynamic(query *spanstore.ThermoDynamicQueryParameters) (*model.ThermoDynamic, error) {
 	//start := time.Now()
 	//defer m.getOperationsMetrics.emit(err, time.Since(start), len(retMe))
@@ -114,48 +140,47 @@ func (m *ReadMetricsDecorator) GetThermoDynamic(query *spanstore.ThermoDynamicQu
 	return nil, errors.New("Not implement ExtReader")
 }
 
-//  implements spanstore.ExtReader#GetApplications
-func (m *ReadMetricsDecorator) GetApplications(query *spanstore.ApplicationQueryParameter) ([]string, error) {
+func (m *ReadMetricsDecorator) GetResponseTimeTrends(query *spanstore.ResponseTimeQueryParameters) ([]float64, error) {
 	//start := time.Now()
 	//defer m.getOperationsMetrics.emit(err, time.Since(start), len(retMe))
 	if sr, ok := m.spanReader.(spanstore.ExtReader); ok {
-		return sr.GetApplications(query)
+		return sr.GetResponseTimeTrends(query)
 	}
 	return nil, errors.New("Not implement ExtReader")
 }
 
-func (m *ReadMetricsDecorator) GetServiceThroughput(query *spanstore.TrendsQueryParameters) ([]int, error) {
+func (m *ReadMetricsDecorator) GetThroughputTrends(query *spanstore.ThroughputQueryParameters) ([]int, error) {
 	//start := time.Now()
 	//defer m.getOperationsMetrics.emit(err, time.Since(start), len(retMe))
 	if sr, ok := m.spanReader.(spanstore.ExtReader); ok {
-		return sr.GetServiceThroughput(query)
+		return sr.GetThroughputTrends(query)
 	}
 	return nil, errors.New("Not implement ExtReader")
 }
 
-func (m *ReadMetricsDecorator) GetServiceResponseTime(query *spanstore.TrendsQueryParameters) ([]float64, error) {
+func (m *ReadMetricsDecorator) GetApplicationTopThroughput(query *spanstore.TopThroughputQueryParameters) ([]*model.ApplicationThroughput, error) {
 	//start := time.Now()
 	//defer m.getOperationsMetrics.emit(err, time.Since(start), len(retMe))
 	if sr, ok := m.spanReader.(spanstore.ExtReader); ok {
-		return sr.GetServiceResponseTime(query)
+		return sr.GetApplicationTopThroughput(query)
 	}
 	return nil, errors.New("Not implement ExtReader")
 }
 
-func (m *ReadMetricsDecorator) GetCaches(query *spanstore.ApplicationQueryParameter) ([]string, error) {
+func (m *ReadMetricsDecorator) GetNodeTopThroughput(query *spanstore.TopThroughputQueryParameters) ([]*model.NodeAvgThroughput, error) {
 	//start := time.Now()
 	//defer m.getOperationsMetrics.emit(err, time.Since(start), len(retMe))
 	if sr, ok := m.spanReader.(spanstore.ExtReader); ok {
-		return sr.GetCaches(query)
+		return sr.GetNodeTopThroughput(query)
 	}
 	return nil, errors.New("Not implement ExtReader")
 }
 
-func (m *ReadMetricsDecorator) GetDbs(query *spanstore.ApplicationQueryParameter) ([]string, error) {
+func (m *ReadMetricsDecorator) GetNodes(query *spanstore.NodesQueryParameters) ([]string, error) {
 	//start := time.Now()
 	//defer m.getOperationsMetrics.emit(err, time.Since(start), len(retMe))
 	if sr, ok := m.spanReader.(spanstore.ExtReader); ok {
-		return sr.GetDbs(query)
+		return sr.GetNodes(query)
 	}
 	return nil, errors.New("Not implement ExtReader")
 }

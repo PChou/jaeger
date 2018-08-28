@@ -30,7 +30,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/graphql-go/graphql"
-	gl "github.com/jaegertracing/jaeger/cmd/query/app/graphql"
+	"github.com/graphql-go/graphql/testutil"
 	"github.com/jaegertracing/jaeger/model"
 	"github.com/jaegertracing/jaeger/model/adjuster"
 	uiconv "github.com/jaegertracing/jaeger/model/converter/json"
@@ -38,7 +38,6 @@ import (
 	"github.com/jaegertracing/jaeger/pkg/multierror"
 	"github.com/jaegertracing/jaeger/storage/dependencystore"
 	"github.com/jaegertracing/jaeger/storage/spanstore"
-	"github.com/mitchellh/mapstructure"
 )
 
 const (
@@ -54,16 +53,6 @@ const (
 var (
 	errNoArchiveSpanStorage = errors.New("archive span storage was not configured")
 )
-
-type Service struct {
-	Name       string         `json:"name"`
-	Operations []gl.Operation `json:"operations"`
-}
-
-type ServiceList struct {
-	Services []Service `json:"apps"`
-	Count    int       `json:"count"`
-}
 
 type GraphQLPostBody struct {
 	Query     string                 `json:"query"`
@@ -136,321 +125,22 @@ func NewAPIHandler(spanReader spanstore.Reader, dependencyReader dependencystore
 		aH.tracer = opentracing.NoopTracer{}
 	}
 
-	var GLApplicationType = graphql.NewObject(
-		graphql.ObjectConfig{
-			Name: "Service",
-			Fields: graphql.Fields{
-				"name": &graphql.Field{
-					Type: graphql.String,
-				},
-				"operations": &graphql.Field{
-					Type: graphql.NewList(gl.GLOperationType),
-					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-						if service, ok := p.Source.(Service); ok {
-							operations, err := aH.spanReader.GetOperations(service.Name)
-							if err != nil {
-								return nil, err
-							}
-							operationWrap := make([]gl.Operation, 0)
-							for _, operation := range operations {
-								operationWrap = append(operationWrap, gl.Operation{Name: operation})
-							}
-							return operationWrap, nil
-						}
-						return []interface{}{}, nil
-					},
-				},
-			},
-		},
-	)
-
-	var GLApplicationListType = graphql.NewObject(
-		graphql.ObjectConfig{
-			Name: "ApplicationList",
-			Fields: graphql.Fields{
-				"apps": &graphql.Field{
-					Type: graphql.NewList(GLApplicationType),
-				},
-				"count": &graphql.Field{
-					Type: graphql.Int,
-				},
-			},
-		},
-	)
-
 	var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 		Name: "RootQuery",
 		Fields: graphql.Fields{
-			"applicationList": &graphql.Field{
-				Type: GLApplicationListType,
-				Args: graphql.FieldConfigArgument{
-					"duration": &graphql.ArgumentConfig{
-						Type: gl.GLDurationType,
-					},
-				},
-				Description: "List of services",
-				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					var durationParams gl.Duration
-					err := mapstructure.Decode(p.Args["duration"], &durationParams)
-					if err != nil {
-						return nil, err
-					}
-					extReader := aH.spanReader.(spanstore.ExtReader)
-					params, err := durationParams.ToApplicationQueryParameters()
-					if err != nil {
-						return nil, err
-					}
-					applications, err := extReader.GetApplications(params)
-					if err != nil {
-						return []interface{}{}, err
-					}
-
-					servicesWrap := make([]Service, 0)
-					for _, service := range applications {
-						servicesWrap = append(servicesWrap, Service{Name: service})
-					}
-					return ServiceList{Services: servicesWrap, Count: len(servicesWrap)}, nil
-				},
-			},
-			"service": &graphql.Field{
-				Type: GLApplicationType,
-				Args: graphql.FieldConfigArgument{
-					"name": &graphql.ArgumentConfig{
-						//DefaultValue:
-						//Description:
-						Type: graphql.String,
-					},
-				},
-				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					name := p.Args["name"]
-					services, err := aH.spanReader.GetServices()
-					if err != nil {
-						return nil, err
-					}
-
-					for _, service := range services {
-						if service == name {
-							return Service{Name: service}, nil
-						}
-					}
-					return nil, nil
-				},
-			},
-			"thermodynamic": &graphql.Field{
-				Type: gl.GLThermodynamicType,
-				Args: graphql.FieldConfigArgument{
-					"duration": &graphql.ArgumentConfig{
-						//DefaultValue:
-						//Description:
-						Type: gl.GLDurationType,
-					},
-				},
-				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					var durationParams gl.Duration
-					err := mapstructure.Decode(p.Args["duration"], &durationParams)
-					if err != nil {
-						return nil, err
-					}
-					extReader := aH.spanReader.(spanstore.ExtReader)
-					params, err := durationParams.ToThermoDynamicQueryParameters()
-					if err != nil {
-						return nil, err
-					}
-					td, err := extReader.GetThermoDynamic(params)
-					if err != nil {
-						return nil, err
-					}
-					return td, err
-				},
-			},
-			"traceList": &graphql.Field{
-				Type: gl.GLTraceListType,
-				Args: graphql.FieldConfigArgument{
-					"condition": &graphql.ArgumentConfig{
-						//DefaultValue:
-						//Description:
-						Type: gl.GLTraceQueryConditionType,
-					},
-				},
-				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					var condition gl.TraceQueryCondition
-					err := mapstructure.Decode(p.Args["condition"], &condition)
-					params, err := condition.ToTraceQueryParameters()
-					if err != nil {
-						return nil, err
-					}
-					traces, err := aH.spanReader.FindTraces(params)
-					if err != nil {
-						return nil, err
-					}
-					uiTraces := make([]*ui.Trace, len(traces))
-					for i, v := range traces {
-						uiTrace, uiErr := aH.convertModelToUI(v, true)
-						if uiErr != nil {
-							continue
-						}
-						uiTraces[i] = uiTrace
-					}
-
-					return gl.TraceList{
-						Total:  len(traces),
-						Traces: uiTraces,
-					}, nil
-				},
-			},
-			"trace": &graphql.Field{
-				Type: gl.GLTraceType,
-				Args: graphql.FieldConfigArgument{
-					"traceId": &graphql.ArgumentConfig{
-						//DefaultValue:
-						//Description:
-						Type: graphql.ID,
-					},
-				},
-				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					if traceId, ok := p.Args["traceId"].(string); ok {
-						modeTraceId, err := model.TraceIDFromString(traceId)
-						if err != nil {
-							return nil, errors.New("Invalid traceId")
-						}
-						trace, err := aH.spanReader.GetTrace(modeTraceId)
-						uiTrace, uiErr := aH.convertModelToUI(trace, true)
-						if uiErr != nil {
-							return nil, errors.New(uiErr.Msg)
-						}
-						return uiTrace, nil
-					}
-					return nil, errors.New("Invalid traceId")
-				},
-			},
-			"throughput": &graphql.Field{
-				Type: gl.GLTrendListType,
-				Args: graphql.FieldConfigArgument{
-					"serviceId": &graphql.ArgumentConfig{
-						Type: graphql.ID,
-					},
-					"duration": &graphql.ArgumentConfig{
-						Type: gl.GLDurationType,
-					},
-				},
-				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					var durationParams gl.Duration
-					err := mapstructure.Decode(p.Args["duration"], &durationParams)
-					if err != nil {
-						return nil, err
-					}
-					params, err := durationParams.ToTrendsQueryParameters()
-					if err != nil {
-						return nil, err
-					}
-					extReader := aH.spanReader.(spanstore.ExtReader)
-					if serviceId, ok := p.Args["serviceId"].(string); ok {
-						params.OperationName = serviceId
-						params.TimeInterval = time.Minute
-						ts, err := extReader.GetServiceThroughput(params)
-						if err != nil {
-							return nil, err
-						}
-						return gl.Trends{TrendList: ts}, nil
-					}
-					return nil, errors.New("Invalid traceId")
-				},
-			},
-			"responseTime": &graphql.Field{
-				Type: gl.GLTrendListType,
-				Args: graphql.FieldConfigArgument{
-					"serviceId": &graphql.ArgumentConfig{
-						Type: graphql.ID,
-					},
-					"duration": &graphql.ArgumentConfig{
-						Type: gl.GLDurationType,
-					},
-				},
-				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					var durationParams gl.Duration
-					err := mapstructure.Decode(p.Args["duration"], &durationParams)
-					if err != nil {
-						return nil, err
-					}
-					params, err := durationParams.ToTrendsQueryParameters()
-					if err != nil {
-						return nil, err
-					}
-					extReader := aH.spanReader.(spanstore.ExtReader)
-					if serviceId, ok := p.Args["serviceId"].(string); ok {
-						params.OperationName = serviceId
-						params.TimeInterval = time.Minute
-						ts, err := extReader.GetServiceResponseTime(params)
-						if err != nil {
-							return nil, err
-						}
-						retMe := gl.Trends{}
-						retMe.TrendList = make([]int, len(ts))
-						for i, float := range ts {
-							retMe.TrendList[i] = int(float / 1000) //convert to milli
-						}
-
-						return retMe, nil
-					}
-					return nil, errors.New("Invalid traceId")
-				},
-			},
-			"cacheInfo": &graphql.Field{
-				Type: gl.GLPeersType,
-				Args: graphql.FieldConfigArgument{
-					"duration": &graphql.ArgumentConfig{
-						Type: gl.GLDurationType,
-					},
-				},
-				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					var durationParams gl.Duration
-					err := mapstructure.Decode(p.Args["duration"], &durationParams)
-					if err != nil {
-						return nil, err
-					}
-					params, err := durationParams.ToApplicationQueryParameters()
-					if err != nil {
-						return nil, err
-					}
-					extReader := aH.spanReader.(spanstore.ExtReader)
-					peers, err := extReader.GetCaches(params)
-					if err != nil {
-						return nil, err
-					}
-					return gl.PeersInfo{
-						Count: len(peers),
-						Peers: peers,
-					}, nil
-				},
-			},
-			"dbInfo": &graphql.Field{
-				Type: gl.GLPeersType,
-				Args: graphql.FieldConfigArgument{
-					"duration": &graphql.ArgumentConfig{
-						Type: gl.GLDurationType,
-					},
-				},
-				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					var durationParams gl.Duration
-					err := mapstructure.Decode(p.Args["duration"], &durationParams)
-					if err != nil {
-						return nil, err
-					}
-					params, err := durationParams.ToApplicationQueryParameters()
-					if err != nil {
-						return nil, err
-					}
-					extReader := aH.spanReader.(spanstore.ExtReader)
-					peers, err := extReader.GetDbs(params)
-					if err != nil {
-						return nil, err
-					}
-					return gl.PeersInfo{
-						Count: len(peers),
-						Peers: peers,
-					}, nil
-				},
-			},
+			"applicationList":          makeApplicationList(aH),
+			"serviceList":              makeServiceList(aH),
+			"dbList":                   makePeerList(aH, "DB"),
+			"cacheList":                makePeerList(aH, "CACHE"),
+			"thermodynamic":            makeThermodynamic(aH),
+			"topSlowService":           makeTopSlowService(aH),
+			"applicationTopThroughput": makeApplicationTopThroughput(aH),
+			"serverTopThroughput":      makeServerTopThroughput(aH),
+			"serverList":               makeServerList(aH),
+			"serviceThroughputTrends":  makeServiceThroughput(aH),
+			"serviceResponseTrends":    makeServiceResponseTime(aH),
+			"traceList":                makeTraceList(aH),
+			"trace":                    makeTrace(aH),
 		},
 	})
 
@@ -478,6 +168,7 @@ func (aH *APIHandler) RegisterRoutes(router *mux.Router) {
 
 	//graphql route
 	aH.handleFunc(router, aH.doGraphQL, "/graphql").Methods(http.MethodPost)
+	aH.handleFunc(router, aH.doGraphQLSchema, "/graphql/schema").Methods(http.MethodGet)
 	aH.handleFunc(router, aH.doGraphQL, "/trace").Methods(http.MethodPost)
 	aH.handleFunc(router, aH.doGraphQL, "/trace/options").Methods(http.MethodPost)
 	aH.handleFunc(router, aH.doGraphQL, "/spans").Methods(http.MethodPost)
@@ -504,6 +195,20 @@ func (aH *APIHandler) handleFunc(
 func (aH *APIHandler) route(route string, args ...interface{}) string {
 	args = append([]interface{}{aH.apiPrefix}, args...)
 	return fmt.Sprintf("/%s"+route, args...)
+}
+
+func (aH *APIHandler) doGraphQLSchema(w http.ResponseWriter, r *http.Request) {
+	result := graphql.Do(graphql.Params{
+		Schema:        aH.schema,
+		RequestString: testutil.IntrospectionQuery,
+	})
+
+	if len(result.Errors) > 0 {
+		http.Error(w, fmt.Sprintf("%v", result.Errors), 500)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
 }
 
 func (aH *APIHandler) doGraphQL(w http.ResponseWriter, r *http.Request) {

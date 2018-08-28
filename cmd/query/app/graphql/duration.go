@@ -32,7 +32,7 @@ var GLDurationType = graphql.NewInputObject(graphql.InputObjectConfig{
 	},
 })
 
-func (d Duration) ToThermoDynamicQueryParameters() (*spanstore.ThermoDynamicQueryParameters, error) {
+func (d Duration) ToBasicQueryParameters() (*spanstore.BasicQueryParameters, error) {
 	start, err := ParseSkyWalkingTimeFormat(d.Start)
 	if err != nil {
 		return nil, err
@@ -41,48 +41,27 @@ func (d Duration) ToThermoDynamicQueryParameters() (*spanstore.ThermoDynamicQuer
 	if err != nil {
 		return nil, err
 	}
-	//d.Step is hard code to "MINUTE"
 
+	return &spanstore.BasicQueryParameters{
+		StartTimeMin: start,
+		StartTimeMax: end,
+	}, nil
+}
+
+func (d Duration) ToThermoDynamicQueryParameters() (*spanstore.ThermoDynamicQueryParameters, error) {
+	bq, err := d.ToBasicQueryParameters()
+	if err != nil {
+		return nil, err
+	}
+	//TODO: d.Step is hard code to "MINUTE"
 	return &spanstore.ThermoDynamicQueryParameters{
-		//ServiceName:
-		//OperationName:    "callSample",
-		StartTimeMin:            start,
-		StartTimeMax:            end,
+		BasicQueryParameters: spanstore.BasicQueryParameters{
+			StartTimeMin: bq.StartTimeMin,
+			StartTimeMax: bq.StartTimeMax,
+		},
 		TimeInterval:            time.Minute,
-		DurationInterval:        time.Millisecond * 500,
+		DurationInterval:        time.Millisecond * 100,
 		DurationExtendBoundsMin: 0,
 		DurationExtendBoundsMax: time.Millisecond * 3000,
-	}, nil
-}
-
-func (d Duration) ToApplicationQueryParameters() (*spanstore.ApplicationQueryParameter, error) {
-	start, err := ParseSkyWalkingTimeFormat(d.Start)
-	if err != nil {
-		return nil, err
-	}
-	end, err := ParseSkyWalkingTimeFormat(d.End)
-	if err != nil {
-		return nil, err
-	}
-
-	return &spanstore.ApplicationQueryParameter{
-		StartTimeMin: start,
-		StartTimeMax: end,
-	}, nil
-}
-
-func (d Duration) ToTrendsQueryParameters() (*spanstore.TrendsQueryParameters, error) {
-	start, err := ParseSkyWalkingTimeFormat(d.Start)
-	if err != nil {
-		return nil, err
-	}
-	end, err := ParseSkyWalkingTimeFormat(d.End)
-	if err != nil {
-		return nil, err
-	}
-
-	return &spanstore.TrendsQueryParameters{
-		StartTimeMin: start,
-		StartTimeMax: end,
 	}, nil
 }

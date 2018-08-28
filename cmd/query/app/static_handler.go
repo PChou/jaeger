@@ -148,6 +148,7 @@ func (sH *StaticAssetsHandler) RegisterRoutes(router *mux.Router) {
 		fileServer = http.StripPrefix(sH.options.BasePath+"/", fileServer)
 	}
 	router.PathPrefix("/static/").Handler(fileServer)
+	router.PathPrefix("/schema/").Handler(fileServer)
 	for _, file := range staticRootFiles {
 		router.Path("/" + file).Handler(fileServer)
 	}

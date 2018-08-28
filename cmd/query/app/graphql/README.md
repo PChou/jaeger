@@ -1,3 +1,11 @@
+# graphql 文档生成
+
+```sh
+graphdoc -e http://localhost:16686/api/graphql -o schema
+```
+
+https://github.com/2fd/graphdoc
+
 # 适配skywalking的GraphQL接口说明
 
 实际处理请求的只有一个handler，但是在接口暴露上是分不同路由的。换句话说，下面这些路由都是可以用于所有的查询语句的：
