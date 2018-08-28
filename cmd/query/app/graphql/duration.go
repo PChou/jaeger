@@ -56,13 +56,20 @@ func (d Duration) ToThermoDynamicQueryParameters() (*spanstore.ThermoDynamicQuer
 	if err != nil {
 		return nil, err
 	}
-	//TODO: d.Step is hard code to "MINUTE"
+	var interval time.Duration
+	if d.Step == "HOUR" {
+		interval = time.Hour
+	} else if d.Step == "DAY" {
+		interval = time.Hour * 24
+	} else {
+		interval = time.Minute
+	}
 	return &spanstore.ThermoDynamicQueryParameters{
 		BasicQueryParameters: spanstore.BasicQueryParameters{
 			StartTimeMin: bq.StartTimeMin,
 			StartTimeMax: bq.StartTimeMax,
 		},
-		TimeInterval:            time.Minute,
+		TimeInterval:            interval,
 		DurationInterval:        time.Millisecond * 100,
 		DurationExtendBoundsMin: 0,
 		DurationExtendBoundsMax: time.Millisecond * 3000,
