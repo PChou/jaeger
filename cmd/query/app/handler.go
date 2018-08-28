@@ -141,6 +141,7 @@ func NewAPIHandler(spanReader spanstore.Reader, dependencyReader dependencystore
 			"serviceResponseTrends":    makeServiceResponseTime(aH),
 			"traceList":                makeTraceList(aH),
 			"trace":                    makeTrace(aH),
+			"topology":                 makeTopology(aH),
 		},
 	})
 

@@ -7,6 +7,7 @@ import (
 	gl "github.com/jaegertracing/jaeger/cmd/query/app/graphql"
 	"github.com/jaegertracing/jaeger/model"
 	ui "github.com/jaegertracing/jaeger/model/json"
+	"github.com/jaegertracing/jaeger/storage/dependencystore"
 	"github.com/jaegertracing/jaeger/storage/spanstore"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
@@ -418,7 +419,7 @@ func makeServerList(handler *APIHandler) *graphql.Field {
 			}
 			applicationName, ok := p.Args["applicationName"].(string)
 			if !ok {
-				return nil, errors.New("applicationName is not a valid Int")
+				return nil, errors.New("applicationName is not a valid String")
 			}
 			extReader := handler.spanReader.(spanstore.ExtReader)
 			bqp, err := durationParams.ToBasicQueryParameters()
@@ -579,8 +580,6 @@ func makeTrace(handler *APIHandler) *graphql.Field {
 		Type: gl.GLTraceType,
 		Args: graphql.FieldConfigArgument{
 			"traceId": &graphql.ArgumentConfig{
-				//DefaultValue:
-				//Description:
 				Type: graphql.ID,
 			},
 		},
@@ -591,6 +590,9 @@ func makeTrace(handler *APIHandler) *graphql.Field {
 					return nil, errors.New("Invalid traceId")
 				}
 				trace, err := handler.spanReader.GetTrace(modeTraceId)
+				if err != nil {
+					return nil, err
+				}
 				uiTrace, uiErr := handler.convertModelToUI(trace, true)
 				if uiErr != nil {
 					return nil, errors.New(uiErr.Msg)
@@ -598,6 +600,41 @@ func makeTrace(handler *APIHandler) *graphql.Field {
 				return uiTrace, nil
 			}
 			return nil, errors.New("Invalid traceId")
+		},
+	}
+}
+
+func makeTopology(handler *APIHandler) *graphql.Field {
+	return &graphql.Field{
+		Type:        graphql.NewList(gl.GLDependencyExt),
+		Description: "获取全局或应用内调用关系",
+		Args: graphql.FieldConfigArgument{
+			"duration": &graphql.ArgumentConfig{
+				Type:        gl.GLDurationType,
+				Description: "指定查询的时间区间",
+			},
+			"applicationName": &graphql.ArgumentConfig{
+				Type:         graphql.String,
+				Description:  "指定应用名称，如果不指定，则在全平台中查询",
+				DefaultValue: "",
+			},
+		},
+		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+			var durationParams gl.Duration
+			err := mapstructure.Decode(p.Args["duration"], &durationParams)
+			if err != nil {
+				return nil, err
+			}
+			bqp, err := durationParams.ToBasicQueryParameters()
+			if err != nil {
+				return nil, err
+			}
+			applicationName, ok := p.Args["applicationName"].(string)
+			if !ok {
+				return nil, errors.New("applicationName is not a valid String")
+			}
+			extReader := handler.dependencyReader.(dependencystore.ExtReader)
+			return extReader.GetDependenciesExt(applicationName, bqp.StartTimeMax, time.Hour /* not actual use*/)
 		},
 	}
 }

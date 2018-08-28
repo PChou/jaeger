@@ -20,3 +20,13 @@ type DependencyLink struct {
 	Child     string `json:"child"`
 	CallCount uint64 `json:"callCount"`
 }
+
+type DependencyLinkExt struct {
+	Parent          string `json:"parent"`
+	Child           string `json:"child"`
+	CallCount       uint64 `json:"callCount"`
+	ParentLayer     string `json:"parentLayer"`
+	ParentComponent string `json:"parentComponent"`
+	ChildLayer      string `json:"childLayer"`
+	ChildComponent  string `json:"childComponent"`
+}

@@ -438,6 +438,8 @@ func (s *SpanReader) GetNodes(query *spanstore.NodesQueryParameters) ([]string, 
 	if err != nil {
 		return nil, errors.Wrap(err, "Search service failed")
 	}
+	// b, _ := json.Marshal(searchResult)
+	// fmt.Println(string(b))
 	appBulket, found := searchResult.Aggregations.Terms("instance")
 	if !found {
 		return nil, errors.New("Counld not found bucket by instance")
@@ -446,7 +448,6 @@ func (s *SpanReader) GetNodes(query *spanstore.NodesQueryParameters) ([]string, 
 	for i, b := range appBulket.Buckets {
 		retMe[i] = fmt.Sprintf("%v", b.Key)
 	}
-	// b, _ := json.Marshal(searchResult)
-	// fmt.Println(string(b))
+
 	return retMe, nil
 }

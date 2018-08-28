@@ -17,6 +17,7 @@ package dependencystore
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -28,8 +29,10 @@ import (
 )
 
 const (
-	dependencyType  = "dependencies"
-	dependencyIndex = "jaeger-dependencies-"
+	//dependencyType = "dependencies"
+	//dependencyIndex = "jaeger-dependencies-"
+	dependencyType  = "apm"
+	dependencyIndex = "graph-"
 )
 
 type timeToDependencies struct {
@@ -106,6 +109,39 @@ func (s *DependencyStore) GetDependencies(endTs time.Time, lookback time.Duratio
 		retDependencies = append(retDependencies, tToD.Dependencies...)
 	}
 	return retDependencies, nil
+}
+
+func (s *DependencyStore) GetDependenciesExt(applicationName string, endTs time.Time, lookback time.Duration) ([]model.DependencyLinkExt, error) {
+	var whereQuery *elastic.BoolQuery
+	if applicationName != "" {
+		whereQuery = elastic.NewBoolQuery().Should(elastic.NewMatchQuery("parent", applicationName)).Should(elastic.NewMatchQuery("child", applicationName))
+	} else {
+		whereQuery = elastic.NewBoolQuery()
+	}
+	indexName := indexWithDate(dependencyIndex, endTs)
+	searchResult, err := s.client.Search(indexName).
+		Type(dependencyType).
+		Size(10000). // the default elasticsearch allowed limit
+		Query(whereQuery).
+		IgnoreUnavailable(true).
+		Do(s.ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to search for dependencies")
+	}
+	var retDependencies []model.DependencyLinkExt
+	hits := searchResult.Hits.Hits
+
+	for _, hit := range hits {
+		source := hit.Source
+		var dep model.DependencyLinkExt
+		fmt.Println(string(*source))
+		if err := json.Unmarshal(*source, &dep); err != nil {
+			return nil, errors.New("Unmarshalling ElasticSearch documents failed")
+		}
+		retDependencies = append(retDependencies, dep)
+	}
+	return retDependencies, nil
+
 }
 
 func buildTSQuery(endTs time.Time, lookback time.Duration) elastic.Query {

@@ -29,3 +29,7 @@ type Writer interface {
 type Reader interface {
 	GetDependencies(endTs time.Time, lookback time.Duration) ([]model.DependencyLink, error)
 }
+
+type ExtReader interface {
+	GetDependenciesExt(applicationName string, endTs time.Time, lookback time.Duration) ([]model.DependencyLinkExt, error)
+}
