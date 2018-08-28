@@ -12,13 +12,16 @@ type Node struct {
 
 var GLNodeAvgThroughput = graphql.NewObject(
 	graphql.ObjectConfig{
-		Name: "NodeAvgThroughput",
+		Name:        "NodeAvgThroughput",
+		Description: "节点（服务器）在指定时间区间内平均每分钟请求数",
 		Fields: graphql.Fields{
 			"node": &graphql.Field{
-				Type: graphql.String,
+				Description: "节点（服务器）名称，可作为节点（服务器）的Id使用",
+				Type:        graphql.String,
 			},
 			"value": &graphql.Field{
-				Type: graphql.Float,
+				Description: "平均每分钟请求数",
+				Type:        graphql.Float,
 			},
 		},
 	},

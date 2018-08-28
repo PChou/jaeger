@@ -16,18 +16,21 @@ type Duration struct {
 
 //Input Type
 var GLDurationType = graphql.NewInputObject(graphql.InputObjectConfig{
-	Name: "Duration",
-	//Description: "duration that passed in",
+	Name:        "Duration",
+	Description: "时间区间参数，定义查询的有效时间区间",
 	Fields: graphql.InputObjectConfigFieldMap{
 		"start": &graphql.InputObjectFieldConfig{
-			Type: graphql.String,
+			Type:        graphql.String,
+			Description: "开始时间，格式为2016-01-01 1310",
 		},
 		"end": &graphql.InputObjectFieldConfig{
-			Type: graphql.String,
+			Type:        graphql.String,
+			Description: "结束时间，格式为2016-01-01 1310",
 		},
 		"step": &graphql.InputObjectFieldConfig{
 			Type:         graphql.String,
 			DefaultValue: "MINUTE",
+			Description:  "分桶策略，默认是MINUTE，用于需要进行时间分桶的查询，如热力图，趋势图",
 		},
 	},
 })

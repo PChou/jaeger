@@ -14,10 +14,12 @@ import (
 
 func makeApplicationList(handler *APIHandler) *graphql.Field {
 	return &graphql.Field{
-		Type: gl.GLApplicationListType,
+		Type:        gl.GLApplicationListType,
+		Description: "查询应用列表",
 		Args: graphql.FieldConfigArgument{
 			"duration": &graphql.ArgumentConfig{
-				Type: gl.GLDurationType,
+				Type:        gl.GLDurationType,
+				Description: "指定查询的时间区间",
 			},
 		},
 		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
@@ -43,13 +45,16 @@ func makeApplicationList(handler *APIHandler) *graphql.Field {
 
 func makeServiceList(handler *APIHandler) *graphql.Field {
 	return &graphql.Field{
-		Type: gl.GLServiceListType,
+		Type:        gl.GLServiceListType,
+		Description: "查询服务列表",
 		Args: graphql.FieldConfigArgument{
 			"duration": &graphql.ArgumentConfig{
-				Type: gl.GLDurationType,
+				Type:        gl.GLDurationType,
+				Description: "指定查询的时间区间",
 			},
 			"applicationName": &graphql.ArgumentConfig{
-				Type: graphql.String,
+				Type:        graphql.String,
+				Description: "指定所属的应用名称，如果不传或留空，表示查询全平台的服务，否则只查询指定应用的服务",
 			},
 		},
 		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
@@ -87,10 +92,12 @@ func makeServiceList(handler *APIHandler) *graphql.Field {
 
 func makePeerList(handler *APIHandler, layer string) *graphql.Field {
 	return &graphql.Field{
-		Type: gl.GLPeersType,
+		Type:        gl.GLPeersType,
+		Description: "查询数据库、缓存这类组件的列表",
 		Args: graphql.FieldConfigArgument{
 			"duration": &graphql.ArgumentConfig{
-				Type: gl.GLDurationType,
+				Type:        gl.GLDurationType,
+				Description: "指定查询的时间区间",
 			},
 		},
 		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
@@ -123,12 +130,12 @@ func makePeerList(handler *APIHandler, layer string) *graphql.Field {
 
 func makeThermodynamic(handler *APIHandler) *graphql.Field {
 	return &graphql.Field{
-		Type: gl.GLThermodynamicType,
+		Type:        gl.GLThermodynamicType,
+		Description: "查询热力图",
 		Args: graphql.FieldConfigArgument{
 			"duration": &graphql.ArgumentConfig{
-				//DefaultValue:
-				//Description:
-				Type: gl.GLDurationType,
+				Description: "指定查询的时间区间",
+				Type:        gl.GLDurationType,
 			},
 		},
 		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
@@ -153,18 +160,20 @@ func makeThermodynamic(handler *APIHandler) *graphql.Field {
 
 func makeTopSlowService(handler *APIHandler) *graphql.Field {
 	return &graphql.Field{
-		Type: graphql.NewList(gl.GLServiceAvgResponseTime),
+		Type:        graphql.NewList(gl.GLServiceAvgResponseTime),
+		Description: "查询平均响应时间最大的几个服务",
 		Args: graphql.FieldConfigArgument{
 			"duration": &graphql.ArgumentConfig{
-				//DefaultValue:
-				//Description:
-				Type: gl.GLDurationType,
+				Description: "指定查询的时间区间",
+				Type:        gl.GLDurationType,
 			},
 			"applicationName": &graphql.ArgumentConfig{
+				Description:  "指定所属的应用名称，如果不传或留空，表示查询全平台的服务，否则只查询指定应用的服务",
 				Type:         graphql.String,
 				DefaultValue: "",
 			},
 			"topN": &graphql.ArgumentConfig{
+				Description:  "指定查询前几条的数据，默认10条",
 				Type:         graphql.Int,
 				DefaultValue: 10,
 			},
@@ -206,12 +215,15 @@ func makeTopSlowService(handler *APIHandler) *graphql.Field {
 
 func makeApplicationTopThroughput(handler *APIHandler) *graphql.Field {
 	return &graphql.Field{
-		Type: graphql.NewList(gl.GLApplicationThroughput),
+		Type:        graphql.NewList(gl.GLApplicationThroughput),
+		Description: "查询吞吐量排名前几的应用",
 		Args: graphql.FieldConfigArgument{
 			"duration": &graphql.ArgumentConfig{
-				Type: gl.GLDurationType,
+				Description: "指定查询的时间区间",
+				Type:        gl.GLDurationType,
 			},
 			"topN": &graphql.ArgumentConfig{
+				Description:  "指定查询前几条的数据，默认10条",
 				Type:         graphql.Int,
 				DefaultValue: 10,
 			},
@@ -249,16 +261,20 @@ func makeApplicationTopThroughput(handler *APIHandler) *graphql.Field {
 
 func makeServerTopThroughput(handler *APIHandler) *graphql.Field {
 	return &graphql.Field{
-		Type: graphql.NewList(gl.GLNodeAvgThroughput),
+		Type:        graphql.NewList(gl.GLNodeAvgThroughput),
+		Description: "查询吞吐量排名前几的服务器",
 		Args: graphql.FieldConfigArgument{
 			"duration": &graphql.ArgumentConfig{
-				Type: gl.GLDurationType,
+				Description: "指定查询的时间区间",
+				Type:        gl.GLDurationType,
 			},
 			"applicationName": &graphql.ArgumentConfig{
 				Type:         graphql.String,
+				Description:  "指定应用名称，如果不指定，则在全平台中排名",
 				DefaultValue: "",
 			},
 			"topN": &graphql.ArgumentConfig{
+				Description:  "指定查询前几条的数据，默认10条",
 				Type:         graphql.Int,
 				DefaultValue: 10,
 			},
@@ -303,13 +319,16 @@ func makeGLNode(handler *APIHandler) *graphql.Object {
 			Name: "Node",
 			Fields: graphql.Fields{
 				"name": &graphql.Field{
-					Type: graphql.String,
+					Description: "节点（服务器）名称，可作为节点（服务器）的唯一标识",
+					Type:        graphql.String,
 				},
 				"os": &graphql.Field{
-					Type: graphql.String,
+					Description: "节点操作系统",
+					Type:        graphql.String,
 				},
 				"throughputTrends": &graphql.Field{
-					Type: graphql.NewList(graphql.Int),
+					Type:        graphql.NewList(graphql.Int),
+					Description: "节点在指定时间内，按分钟的吞吐量趋势数据",
 					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 						var durationParams gl.Duration
 						err := mapstructure.Decode(p.Info.VariableValues["duration"], &durationParams)
@@ -340,7 +359,8 @@ func makeGLNode(handler *APIHandler) *graphql.Object {
 					},
 				},
 				"responseTimeTrends": &graphql.Field{
-					Type: graphql.NewList(graphql.Float),
+					Type:        graphql.NewList(graphql.Float),
+					Description: "节点在指定时间内，按分钟的平均响应时间趋势数据",
 					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 						var durationParams gl.Duration
 						err := mapstructure.Decode(p.Info.VariableValues["duration"], &durationParams)
@@ -377,12 +397,15 @@ func makeGLNode(handler *APIHandler) *graphql.Object {
 
 func makeServerList(handler *APIHandler) *graphql.Field {
 	return &graphql.Field{
-		Type: graphql.NewList(makeGLNode(handler)),
+		Type:        graphql.NewList(makeGLNode(handler)),
+		Description: "查询节点（服务器）",
 		Args: graphql.FieldConfigArgument{
 			"duration": &graphql.ArgumentConfig{
-				Type: gl.GLDurationType,
+				Description: "指定查询的时间区间",
+				Type:        gl.GLDurationType,
 			},
 			"applicationName": &graphql.ArgumentConfig{
+				Description:  "指定应用名称，如果不指定，则在全平台中查询",
 				Type:         graphql.String,
 				DefaultValue: "",
 			},
@@ -421,14 +444,17 @@ func makeServerList(handler *APIHandler) *graphql.Field {
 
 func makeServiceThroughput(handler *APIHandler) *graphql.Field {
 	return &graphql.Field{
-		Type: gl.GLTrendListType,
+		Type:        gl.GLTrendListType,
+		Description: "查询指定时间范围内，按分钟计算的，服务的吞吐量趋势",
 		Args: graphql.FieldConfigArgument{
 			"serviceName": &graphql.ArgumentConfig{
 				Type:         graphql.ID,
+				Description:  "指定服务名",
 				DefaultValue: "",
 			},
 			"duration": &graphql.ArgumentConfig{
-				Type: gl.GLDurationType,
+				Description: "指定查询的时间区间",
+				Type:        gl.GLDurationType,
 			},
 		},
 		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
@@ -463,13 +489,16 @@ func makeServiceThroughput(handler *APIHandler) *graphql.Field {
 
 func makeServiceResponseTime(handler *APIHandler) *graphql.Field {
 	return &graphql.Field{
-		Type: gl.GLTrendListType,
+		Type:        gl.GLTrendListType,
+		Description: "查询指定时间范围内，按分钟计算的，服务的平均响应时间",
 		Args: graphql.FieldConfigArgument{
 			"serviceName": &graphql.ArgumentConfig{
-				Type: graphql.ID,
+				Type:        graphql.ID,
+				Description: "指定服务名",
 			},
 			"duration": &graphql.ArgumentConfig{
-				Type: gl.GLDurationType,
+				Description: "指定查询的时间区间",
+				Type:        gl.GLDurationType,
 			},
 		},
 		Resolve: func(p graphql.ResolveParams) (interface{}, error) {

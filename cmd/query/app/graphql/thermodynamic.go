@@ -8,13 +8,16 @@ var GLNodeType = graphql.NewList(graphql.Int)
 
 var GLThermodynamicType = graphql.NewObject(
 	graphql.ObjectConfig{
-		Name: "ThermoDynamic",
+		Name:        "ThermoDynamic",
+		Description: "响应时间热力图",
 		Fields: graphql.Fields{
 			"responseTimeStep": &graphql.Field{
-				Type: graphql.Int,
+				Description: "响应时间的区间，单位是ms",
+				Type:        graphql.Int,
 			},
 			"nodes": &graphql.Field{
-				Type: graphql.NewList(GLNodeType),
+				Description: "点阵图，这是一个整型二维数组",
+				Type:        graphql.NewList(GLNodeType),
 			},
 		},
 	},

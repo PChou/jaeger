@@ -10,10 +10,12 @@ type Trends struct {
 
 var GLTrendListType = graphql.NewObject(
 	graphql.ObjectConfig{
-		Name: "TrendList",
+		Name:        "TrendList",
+		Description: "趋势图",
 		Fields: graphql.Fields{
 			"trendList": &graphql.Field{
-				Type: graphql.NewList(graphql.Int),
+				Type:        graphql.NewList(graphql.Int),
+				Description: "趋势图",
 			},
 		},
 	},
