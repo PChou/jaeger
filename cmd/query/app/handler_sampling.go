@@ -32,30 +32,32 @@ func (aH *APIHandler) getSampling(w http.ResponseWriter, r *http.Request) {
 }
 
 func (aH *APIHandler) deleteSampling(w http.ResponseWriter, r *http.Request) {
+	defer aH.getAllSamplings(w, r)
 	vars := mux.Vars(r)
 	err := aH.samplingWriter.DeleteSampling(vars[samplingParam])
 	if err != nil {
-		http.Error(w, fmt.Sprintf("%v", err), 500)
+		http.Error(w, "", 500)
 		return
 	}
 }
 
 func (aH *APIHandler) writeSampling(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
+	defer aH.getAllSamplings(w, r)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("%v", err), 500)
+		http.Error(w, "", 500)
 		return
 	}
 
 	var samp ui.Sampling
 	err = json.Unmarshal(body, &samp)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("%v", err), 500)
+		http.Error(w, "", 500)
 		return
 	}
 
 	aH.samplingWriter.WriteSampling(samp)
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(samp)
+	// w.Header().Set("Content-Type", "application/json")
+	// json.NewEncoder(w).Encode(samp)
 }

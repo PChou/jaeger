@@ -89,6 +89,7 @@ type TraceQueryCondition struct {
 	MinTraceDuration int      `json:"minTraceDuration"` //ms
 	QueryOrder       string   `json:"queryOrder"`
 	TraceState       string   `json:"traceState"`
+	TraceId          string   `json:"traceId"`
 	QueryDuration    Duration `json:"queryDuration"`
 	Paging           struct {
 		NeedTotal bool `json:"needTotal"`
@@ -110,6 +111,7 @@ func (c TraceQueryCondition) ToTraceQueryParameters() (*spanstore.TraceQueryPara
 	return &spanstore.TraceQueryParameters{
 		ServiceName:   c.ApplicationId,
 		OperationName: c.OperationName,
+		TraceId:       c.TraceId,
 		StartTimeMin:  start,
 		StartTimeMax:  end,
 		DurationMin:   time.Duration(c.MinTraceDuration) * time.Millisecond,
@@ -138,6 +140,9 @@ var GLTraceQueryConditionType = graphql.NewInputObject(graphql.InputObjectConfig
 			Type: graphql.String,
 		},
 		"traceState": &graphql.InputObjectFieldConfig{
+			Type: graphql.String,
+		},
+		"traceId": &graphql.InputObjectFieldConfig{
 			Type: graphql.String,
 		},
 		"paging": &graphql.InputObjectFieldConfig{

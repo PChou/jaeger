@@ -391,6 +391,10 @@ func (s *SpanReader) buildTraceIDSubAggregation() elastic.Aggregation {
 func (s *SpanReader) buildFindTraceIDsQuery(traceQuery *spanstore.TraceQueryParameters) elastic.Query {
 	boolQuery := elastic.NewBoolQuery()
 
+	if traceQuery.TraceId != "" {
+		boolQuery.Must(elastic.NewMatchQuery(traceIDField, traceQuery.TraceId))
+	}
+
 	//add duration query
 	if traceQuery.DurationMax != 0 || traceQuery.DurationMin != 0 {
 		durationQuery := s.buildDurationQuery(traceQuery.DurationMin, traceQuery.DurationMax)

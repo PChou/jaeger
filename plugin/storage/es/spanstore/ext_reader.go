@@ -107,7 +107,6 @@ func (s *SpanReader) GetServiceTopResponseTime(query *spanstore.ServiceTopRespon
 	if query.ApplicationName != "" {
 		whereQuery.Must(elastic.NewMatchQuery(serviceNameField, query.ApplicationName))
 	}
-	fmt.Println(query.ApplicationName)
 	top := query.Top
 	if top == 0 {
 		top = 5000
@@ -151,7 +150,7 @@ func (s *SpanReader) GetServiceTopResponseTime(query *spanstore.ServiceTopRespon
 			if !found {
 				sart = &model.ServiceAvgResponseTime{ServiceName: fmt.Sprintf("%v", b.Key), Value: 0}
 			} else {
-				sart = &model.ServiceAvgResponseTime{ServiceName: fmt.Sprintf("%v", b.Key), Value: *avg.Value}
+				sart = &model.ServiceAvgResponseTime{ServiceName: fmt.Sprintf("%v", b.Key), Value: *avg.Value / 1000}
 			}
 
 			if found2 {
@@ -311,7 +310,7 @@ func (s *SpanReader) GetResponseTimeTrends(query *spanstore.ResponseTimeQueryPar
 			if !found {
 				retMe[i] = 0
 			} else {
-				retMe[i] = *avg.Value
+				retMe[i] = *avg.Value / 1000
 			}
 		}
 	}

@@ -45,3 +45,7 @@ func MicrosecondsAsDuration(v uint64) time.Duration {
 func DurationAsMicroseconds(d time.Duration) uint64 {
 	return uint64(d.Nanoseconds() / 1000)
 }
+
+func DurationAsMilliseconds(d time.Duration) uint64 {
+	return uint64(d.Nanoseconds() / 1000 / 1000)
+}
