@@ -445,7 +445,7 @@ func makeServerList(handler *APIHandler) *graphql.Field {
 
 func makeServerThroughput(handler *APIHandler) *graphql.Field {
 	return &graphql.Field{
-		Type:        graphql.NewList(graphql.Int),
+		Type:        gl.GLTrendListType,
 		Description: "查询节点（服务器）",
 		Args: graphql.FieldConfigArgument{
 			"duration": &graphql.ArgumentConfig{
@@ -473,7 +473,7 @@ func makeServerThroughput(handler *APIHandler) *graphql.Field {
 				return nil, err
 			}
 			extReader := handler.spanReader.(spanstore.ExtReader)
-			return extReader.GetThroughputTrends(&spanstore.ThroughputQueryParameters{
+			tt, err := extReader.GetThroughputTrends(&spanstore.ThroughputQueryParameters{
 				BasicQueryParameters: spanstore.BasicQueryParameters{
 					StartTimeMin: bqp.StartTimeMin,
 					StartTimeMax: bqp.StartTimeMax,
@@ -481,13 +481,17 @@ func makeServerThroughput(handler *APIHandler) *graphql.Field {
 				Instance:     serverId,
 				TimeInterval: time.Minute,
 			})
+			if err != nil {
+				return nil, err
+			}
+			return gl.Trends{TrendList: tt}, nil
 		},
 	}
 }
 
 func makeServerResponseTime(handler *APIHandler) *graphql.Field {
 	return &graphql.Field{
-		Type:        graphql.NewList(graphql.Float),
+		Type:        gl.GLTrendListType,
 		Description: "查询节点（服务器）",
 		Args: graphql.FieldConfigArgument{
 			"duration": &graphql.ArgumentConfig{
@@ -515,7 +519,7 @@ func makeServerResponseTime(handler *APIHandler) *graphql.Field {
 				return nil, err
 			}
 			extReader := handler.spanReader.(spanstore.ExtReader)
-			return extReader.GetResponseTimeTrends(&spanstore.ResponseTimeQueryParameters{
+			ts, err := extReader.GetResponseTimeTrends(&spanstore.ResponseTimeQueryParameters{
 				BasicQueryParameters: spanstore.BasicQueryParameters{
 					StartTimeMin: bqp.StartTimeMin,
 					StartTimeMax: bqp.StartTimeMax,
@@ -523,6 +527,15 @@ func makeServerResponseTime(handler *APIHandler) *graphql.Field {
 				Instance:     serverId,
 				TimeInterval: time.Minute,
 			})
+			if err != nil {
+				return nil, err
+			}
+			retMe := gl.Trends{}
+			retMe.TrendList = make([]int, len(ts))
+			for i, t := range ts {
+				retMe.TrendList[i] = int(t)
+			}
+			return retMe, nil
 		},
 	}
 }
