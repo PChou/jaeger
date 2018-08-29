@@ -52,9 +52,10 @@ var GLTraceType = graphql.NewObject(
 				Type: graphql.NewList(GLSpanType),
 			},
 			//TODO don't know how to export Processes which is a map
-			// "processes": &graphql.Field {
-			// 	Type: graphql.
-			// },
+			//here workaround use array
+			"flattenProcesses": &graphql.Field{
+				Type: graphql.NewList(GLFlattenProcessType),
+			},
 			"warnings": &graphql.Field{
 				Type: graphql.NewList(graphql.String),
 			},
@@ -82,7 +83,7 @@ var GLTraceListType = graphql.NewObject(
 )
 
 type TraceQueryCondition struct {
-	ApplicationName  string   `json:"applicationId"`
+	ApplicationId    string   `json:"applicationId"`
 	OperationName    string   `json:"operationName"`
 	MaxTraceDuration int      `json:"maxTraceDuration"` //ms
 	MinTraceDuration int      `json:"minTraceDuration"` //ms
@@ -107,7 +108,7 @@ func (c TraceQueryCondition) ToTraceQueryParameters() (*spanstore.TraceQueryPara
 	}
 
 	return &spanstore.TraceQueryParameters{
-		ServiceName:   c.ApplicationName,
+		ServiceName:   c.ApplicationId,
 		OperationName: c.OperationName,
 		StartTimeMin:  start,
 		StartTimeMax:  end,

@@ -47,12 +47,19 @@ const (
 	BinaryType ValueType = "binary"
 )
 
+type FlattenProcess struct {
+	ProcessKey   string  `json:"key"`
+	ProcessValue Process `json:"value"`
+}
+
 // Trace is a list of spans
 type Trace struct {
 	TraceID   TraceID               `json:"traceID"`
 	Spans     []Span                `json:"spans"`
 	Processes map[ProcessID]Process `json:"processes"`
 	Warnings  []string              `json:"warnings"`
+	//for graphql
+	FlattenProcesses []FlattenProcess `json:"flattenProcesses"`
 }
 
 // Span is a span denoting a piece of work in some infrastructure

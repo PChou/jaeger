@@ -54,10 +54,11 @@ func (fd fromDomain) fromDomain(trace *model.Trace) *json.Trace {
 		jSpans[i] = fd.convertSpan(span, processID)
 	}
 	jTrace := &json.Trace{
-		TraceID:   traceID,
-		Spans:     jSpans,
-		Processes: fd.convertProcesses(processes.getMapping()),
-		Warnings:  trace.Warnings,
+		TraceID:          traceID,
+		Spans:            jSpans,
+		Processes:        fd.convertProcesses(processes.getMapping()),
+		FlattenProcesses: fd.convertFlattenProcesses(processes.getMapping()),
+		Warnings:         trace.Warnings,
 	}
 	return jTrace
 }
@@ -163,6 +164,19 @@ func (fd fromDomain) convertProcesses(processes map[string]*model.Process) map[j
 	out := make(map[json.ProcessID]json.Process)
 	for key, process := range processes {
 		out[json.ProcessID(key)] = fd.convertProcess(process)
+	}
+	return out
+}
+
+func (fd fromDomain) convertFlattenProcesses(processes map[string]*model.Process) []json.FlattenProcess {
+	out := make([]json.FlattenProcess, len(processes))
+	i := 0
+	for key, process := range processes {
+		out[i] = json.FlattenProcess{
+			ProcessKey:   key,
+			ProcessValue: fd.convertProcess(process),
+		}
+		i = i + 1
 	}
 	return out
 }

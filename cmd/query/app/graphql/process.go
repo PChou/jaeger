@@ -22,3 +22,17 @@ var GLProcessType = graphql.NewObject(
 		},
 	},
 )
+
+var GLFlattenProcessType = graphql.NewObject(
+	graphql.ObjectConfig{
+		Name: "FlattenProcess",
+		Fields: graphql.Fields{
+			"key": &graphql.Field{
+				Type: graphql.String,
+			},
+			"value": &graphql.Field{
+				Type: GLProcessType,
+			},
+		},
+	},
+)
