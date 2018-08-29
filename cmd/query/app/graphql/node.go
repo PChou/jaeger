@@ -23,6 +23,14 @@ var GLNodeAvgThroughput = graphql.NewObject(
 				Description: "平均每分钟请求数",
 				Type:        graphql.Float,
 			},
+			"os": &graphql.Field{
+				Description: "操作系统",
+				Type:        graphql.String,
+			},
+			"host": &graphql.Field{
+				Description: "主机名",
+				Type:        graphql.String,
+			},
 		},
 	},
 )

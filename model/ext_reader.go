@@ -37,6 +37,8 @@ type ApplicationThroughput struct {
 type NodeAvgThroughput struct {
 	Node  string  `json:"node"`
 	Value float64 `json:"value"`
+	OS    string  `json:"os"`
+	Host  string  `json:"host"`
 }
 
 type NodeThroughput struct {

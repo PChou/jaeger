@@ -114,7 +114,7 @@ func (c TraceQueryCondition) ToTraceQueryParameters() (*spanstore.TraceQueryPara
 		StartTimeMax:  end,
 		DurationMin:   time.Duration(c.MinTraceDuration) * time.Millisecond,
 		DurationMax:   time.Duration(c.MaxTraceDuration) * time.Millisecond,
-		NumTraces:     5000, //at most get 5000
+		NumTraces:     20, //at most get 5000
 	}, nil
 }
 

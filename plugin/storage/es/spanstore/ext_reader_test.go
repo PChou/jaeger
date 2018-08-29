@@ -174,8 +174,8 @@ func TestGetNodeTopThroughput(t *testing.T) {
 	assert.Nil(t, err)
 	ret, err := reader.GetNodeTopThroughput(&spanstore.TopThroughputQueryParameters{
 		BasicQueryParameters: spanstore.BasicQueryParameters{
-			StartTimeMin: time.Unix(1535356800, 0),
-			StartTimeMax: time.Unix(1535360400, 0),
+			StartTimeMin: time.Unix(1535428800, 0),
+			StartTimeMax: time.Unix(1535450400, 0),
 		},
 	})
 	assert.Nil(t, err)

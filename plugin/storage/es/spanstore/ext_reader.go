@@ -35,6 +35,15 @@ func (s *SpanReader) buildStartTimeMillisQuery(startTimeMin time.Time, startTime
 	return elastic.NewRangeQuery(startTimeMillisField).Gte(minStartTimeMilli).Lte(maxStartTimeMilli)
 }
 
+func findTagValue(tags []model.KeyValue, key string, defaultValue interface{}) interface{} {
+	for _, tag := range tags {
+		if tag.Key == key {
+			return tag.Value()
+		}
+	}
+	return defaultValue
+}
+
 func (s *SpanReader) GetApplications(query *spanstore.BasicQueryParameters) ([]string, error) {
 	serviceIndices := s.indicesForTimeRange(s.serviceIndexPrefix, query.StartTimeMin, query.StartTimeMax)
 	return s.serviceOperationStorage.getServices(serviceIndices)
@@ -352,7 +361,8 @@ func (s *SpanReader) GetNodeTopThroughput(query *spanstore.TopThroughputQueryPar
 		whereQuery.Must(elastic.NewMatchQuery(serviceNameField, query.ApplicationName))
 	}
 
-	appAgg := elastic.NewTermsAggregation().Field(tagInstanceKeyField).OrderByCount(false)
+	appAgg := elastic.NewTermsAggregation().Field(tagInstanceKeyField).OrderByCount(false).
+		SubAggregation("top", elastic.NewTopHitsAggregation().Size(1))
 	jaegerIndices := s.indicesForTimeRange(s.spanIndexPrefix, query.StartTimeMin, query.StartTimeMax)
 	searchService := s.client.Search(jaegerIndices...).
 		Type(spanType).
@@ -364,6 +374,8 @@ func (s *SpanReader) GetNodeTopThroughput(query *spanstore.TopThroughputQueryPar
 	if err != nil {
 		return nil, errors.Wrap(err, "Search service failed")
 	}
+	// b, _ := json.Marshal(searchResult)
+	// fmt.Println(string(b))
 	appBulket, found := searchResult.Aggregations.Terms("instance")
 	if !found {
 		return nil, errors.New("Counld not found bucket by instance")
@@ -374,14 +386,19 @@ func (s *SpanReader) GetNodeTopThroughput(query *spanstore.TopThroughputQueryPar
 		if b.DocCount == 0 {
 			retMe[i] = &model.NodeAvgThroughput{}
 		} else {
-			retMe[i] = &model.NodeAvgThroughput{
+			nat := &model.NodeAvgThroughput{
 				Node:  fmt.Sprintf("%v", b.Key),
 				Value: float64(b.DocCount) / float64(minutesCount),
 			}
+			top, found := b.TopHits("top")
+			if found {
+				spans, _ := s.collectSpans(top.Hits.Hits)
+				nat.OS = fmt.Sprintf("%v", findTagValue(spans[0].Process.Tags, "os", ""))
+				nat.Host = fmt.Sprintf("%v", findTagValue(spans[0].Process.Tags, "hostname", ""))
+			}
+			retMe[i] = nat
 		}
 	}
-	// b, _ := json.Marshal(searchResult)
-	// fmt.Println(string(b))
 	return retMe, nil
 }
 
