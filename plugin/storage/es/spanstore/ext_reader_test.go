@@ -95,19 +95,22 @@ func TestGetServiceTopResponseTime(t *testing.T) {
 	assert.Nil(t, err)
 	ret, err := reader.GetServiceTopResponseTime(&spanstore.ServiceTopResponseTimeQueryParameters{
 		BasicQueryParameters: spanstore.BasicQueryParameters{
-			StartTimeMin: time.Unix(1535339000, 0),
-			StartTimeMax: time.Unix(1535342600, 0),
+			StartTimeMin: time.Unix(1535428800, 0),
+			StartTimeMax: time.Unix(1535450400, 0),
 		},
-		Top: 3,
+		ApplicationName: "jboss1",
+		Top:             3,
 	})
 	assert.Nil(t, err)
-	fmt.Println(ret)
+	for _, r := range ret {
+		fmt.Println(r)
+	}
 }
 
 func TestGetServiceThroughput(t *testing.T) {
 	reader, err := getLocalReader()
 	assert.Nil(t, err)
-	ret, err := reader.GetServiceThroughput(&spanstore.ThroughputQueryParameters{
+	ret, err := reader.GetThroughputTrends(&spanstore.ThroughputQueryParameters{
 		BasicQueryParameters: spanstore.BasicQueryParameters{
 			StartTimeMin: time.Unix(1535339000, 0),
 			StartTimeMax: time.Unix(1535342600, 0),
@@ -122,7 +125,7 @@ func TestGetServiceThroughput(t *testing.T) {
 func TestGetServiceResponseTime(t *testing.T) {
 	reader, err := getLocalReader()
 	assert.Nil(t, err)
-	ret, err := reader.GetServiceResponseTime(&spanstore.ResponseTimeQueryParameters{
+	ret, err := reader.GetResponseTimeTrends(&spanstore.ResponseTimeQueryParameters{
 		BasicQueryParameters: spanstore.BasicQueryParameters{
 			StartTimeMin: time.Unix(1535339000, 0),
 			StartTimeMax: time.Unix(1535342600, 0),
@@ -137,7 +140,7 @@ func TestGetServiceResponseTime(t *testing.T) {
 func TestGetNodeThroughput(t *testing.T) {
 	reader, err := getLocalReader()
 	assert.Nil(t, err)
-	ret, err := reader.GetNodeThroughput(&spanstore.ThroughputQueryParameters{
+	ret, err := reader.GetThroughputTrends(&spanstore.ThroughputQueryParameters{
 		BasicQueryParameters: spanstore.BasicQueryParameters{
 			StartTimeMin: time.Unix(1535356800, 0),
 			StartTimeMax: time.Unix(1535360400, 0),

@@ -107,7 +107,7 @@ func main() {
 
 			apiHandlerOptions := []app.HandlerOption{
 				app.HandlerOptions.Logger(logger),
-				app.HandlerOptions.Tracer(tracer),
+				//app.HandlerOptions.Tracer(tracer),
 			}
 			apiHandlerOptions = append(apiHandlerOptions, archiveOptions(storageFactory, logger)...)
 			apiHandler := app.NewAPIHandler(

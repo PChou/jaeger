@@ -19,6 +19,7 @@ const (
 	tagTypeKeyField     = "flattenTags.span.type"
 	tagPeerKeyField     = "flattenTags.peer"
 	tagInstanceKeyField = "flattenTags.process.sid"
+	tagSampleKeyField   = "flattenTags.sampled"
 
 	serviceLayer   = "HTTP"
 	serviceDefType = "Entry"
@@ -90,26 +91,35 @@ func (s *SpanReader) GetServiceTopResponseTime(query *spanstore.ServiceTopRespon
 	whereQuery := elastic.NewBoolQuery().Must(timeRange)
 	whereQuery.Must(elastic.NewMatchQuery(tagLayerKeyField, serviceLayer))
 	whereQuery.Must(elastic.NewMatchQuery(tagTypeKeyField, serviceDefType))
+	whereQuery.Must(elastic.NewMatchQuery(tagSampleKeyField, "1"))
 	if query.ApplicationName != "" {
 		whereQuery.Must(elastic.NewMatchQuery(serviceNameField, query.ApplicationName))
+	}
+	fmt.Println(query.ApplicationName)
+	top := query.Top
+	if top == 0 {
+		top = 5000
 	}
 
 	agg := elastic.NewTermsAggregation().Field(operationNameField).
 		SubAggregation("avg", elastic.NewAvgAggregation().Field(durationField)).
-		//SubAggregation("avg", elastic.NewAvgAggregation().Field(durationField)).
-		OrderByAggregation("avg", false)
+		SubAggregation("top", elastic.NewTopHitsAggregation().Size(1)). //tophit used to fetch other fields like serviceName
+		OrderByAggregation("avg", false).
+		Size(top)
 
 	jaegerIndices := s.indicesForTimeRange(s.spanIndexPrefix, query.StartTimeMin, query.StartTimeMax)
 	searchService := s.client.Search(jaegerIndices...).
 		Type(spanType).
 		Size(0). // set to 0 because we don't want actual documents.
+		Query(whereQuery).
 		Aggregation("agg", agg).
 		IgnoreUnavailable(true)
 	searchResult, err := searchService.Do(s.ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "Search service failed")
 	}
-
+	// b, _ := json.Marshal(searchResult)
+	// fmt.Println(string(b))
 	opBucket, found := searchResult.Aggregations.Terms("agg")
 	if !found {
 		return nil, errors.New("Counld not found bucket by aggs")
@@ -123,17 +133,23 @@ func (s *SpanReader) GetServiceTopResponseTime(query *spanstore.ServiceTopRespon
 		if b.DocCount == 0 {
 			retMe = append(retMe, &model.ServiceAvgResponseTime{})
 		} else {
+			var sart *model.ServiceAvgResponseTime
 			avg, found := b.Avg("avg")
+			top, found2 := b.TopHits("top")
 			if !found {
-				retMe = append(retMe, &model.ServiceAvgResponseTime{ServiceName: fmt.Sprintf("%v", b.Key), Value: 0})
+				sart = &model.ServiceAvgResponseTime{ServiceName: fmt.Sprintf("%v", b.Key), Value: 0}
 			} else {
-				retMe = append(retMe, &model.ServiceAvgResponseTime{ServiceName: fmt.Sprintf("%v", b.Key), Value: *avg.Value})
+				sart = &model.ServiceAvgResponseTime{ServiceName: fmt.Sprintf("%v", b.Key), Value: *avg.Value}
 			}
+
+			if found2 {
+				spans, _ := s.collectSpans(top.Hits.Hits)
+				sart.ApplicatioName = spans[0].Process.ServiceName
+			}
+			retMe = append(retMe, sart)
 		}
 	}
 
-	// b, _ := json.Marshal(searchResult)
-	// fmt.Println(string(b))
 	return retMe, nil
 
 }
