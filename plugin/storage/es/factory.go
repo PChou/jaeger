@@ -87,3 +87,8 @@ func (f *Factory) CreateSpanWriter() (spanstore.Writer, error) {
 func (f *Factory) CreateDependencyReader() (dependencystore.Reader, error) {
 	return esDepStore.NewDependencyStore(f.primaryClient, f.logger, f.primaryConfig.GetIndexPrefix()), nil
 }
+
+func (f *Factory) CreateSamplingReaderWriter() (spanstore.SamplingReaderWriter, error) {
+	cfg := f.primaryConfig
+	return esSpanStore.NewSpanWriter(f.primaryClient, f.logger, f.metricsFactory, cfg.GetNumShards(), cfg.GetNumReplicas(), cfg.GetIndexPrefix()), nil
+}

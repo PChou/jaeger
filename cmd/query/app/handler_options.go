@@ -15,6 +15,7 @@
 package app
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
@@ -86,5 +87,12 @@ func (handlerOptions) ArchiveSpanWriter(writer spanstore.Writer) HandlerOption {
 func (handlerOptions) Tracer(tracer opentracing.Tracer) HandlerOption {
 	return func(apiHandler *APIHandler) {
 		apiHandler.tracer = tracer
+	}
+}
+
+func (handlerOptions) SamplingWriter(writer spanstore.SamplingReaderWriter) HandlerOption {
+	return func(apiHandler *APIHandler) {
+		fmt.Println(writer)
+		apiHandler.samplingWriter = writer
 	}
 }

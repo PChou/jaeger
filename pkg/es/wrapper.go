@@ -43,6 +43,10 @@ func (c ESClient) CreateIndex(index string) IndicesCreateService {
 	return WrapESIndicesCreateService(c.client.CreateIndex(index))
 }
 
+func (c ESClient) Delete() DeleteDocService {
+	return WrapESDeleteDocService(c.client.Delete())
+}
+
 // Index calls this function to internal client.
 func (c ESClient) Index() IndexService {
 	r := elastic.NewBulkIndexRequest()
@@ -139,6 +143,35 @@ func (i ESIndexService) BodyJson(body interface{}) IndexService {
 // Add adds the request to bulk service
 func (i ESIndexService) Add() {
 	i.bulkService.Add(i.bulkIndexReq)
+}
+
+// ---
+
+type ESDeleteDocService struct {
+	deleteService *elastic.DeleteService
+}
+
+func WrapESDeleteDocService(deleteService *elastic.DeleteService) ESDeleteDocService {
+	return ESDeleteDocService{deleteService: deleteService}
+}
+
+// Index calls this function to internal service.
+func (d ESDeleteDocService) Index(index string) DeleteDocService {
+	return WrapESDeleteDocService(d.deleteService.Index(index))
+}
+
+// Type calls this function to internal service.
+func (d ESDeleteDocService) Type(typ string) DeleteDocService {
+	return WrapESDeleteDocService(d.deleteService.Type(typ))
+}
+
+// Id calls this function to internal service.
+func (d ESDeleteDocService) Id(id string) DeleteDocService {
+	return WrapESDeleteDocService(d.deleteService.Id(id))
+}
+
+func (d ESDeleteDocService) Delete(ctx context.Context) (*elastic.DeleteResponse, error) {
+	return d.deleteService.Do(ctx)
 }
 
 // ---

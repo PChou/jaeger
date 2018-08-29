@@ -19,11 +19,19 @@ import (
 	"time"
 
 	"github.com/jaegertracing/jaeger/model"
+	"github.com/jaegertracing/jaeger/model/json"
 )
 
 // Writer writes spans to storage.
 type Writer interface {
 	WriteSpan(span *model.Span) error
+}
+
+type SamplingReaderWriter interface {
+	WriteSampling(sampling json.Sampling) error
+	GetSampling(Id string) (json.Sampling, error)
+	DeleteSampling(Id string) error
+	GetAllSamplings() ([]json.Sampling, error)
 }
 
 var (

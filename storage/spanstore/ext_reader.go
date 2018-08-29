@@ -31,12 +31,6 @@ type ExtReader interface {
 	GetNodeTopThroughput(query *TopThroughputQueryParameters) ([]*model.NodeAvgThroughput, error)
 	GetResponseTimeTrends(query *ResponseTimeQueryParameters) ([]float64, error)
 	GetThroughputTrends(query *ThroughputQueryParameters) ([]int, error)
-
-	// GetApplications(query *BasicQueryParameters) ([]string, error)
-	// GetServiceThroughput(query *ThroughputQueryParameters) ([]int, error)
-	// GetServiceResponseTime(query *ResponseTimeQueryParameters) ([]float64, error)
-	// GetCaches(query *ApplicationQueryParameter) ([]string, error)
-	// GetDbs(query *ApplicationQueryParameter) ([]string, error)
 }
 
 // Basic query parameters contains StartTimeMin and StartTimeMax

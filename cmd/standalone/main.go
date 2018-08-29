@@ -118,6 +118,10 @@ func main() {
 			if err != nil {
 				logger.Fatal("Failed to create dependency reader", zap.Error(err))
 			}
+			samplingReaderWriter, err := storageFactory.CreateSamplingReaderWriter()
+			if err != nil {
+				logger.Fatal("Failed to create sampling reader writer", zap.Error(err))
+			}
 			samplingHandler := initializeSamplingHandler(strategyStoreFactory, v, metricsFactory, logger)
 
 			aOpts := new(agentApp.Builder).InitFromViper(v)
@@ -126,7 +130,7 @@ func main() {
 
 			startAgent(aOpts, cOpts, logger, metricsFactory)
 			startCollector(cOpts, spanWriter, logger, metricsFactory, samplingHandler, hc)
-			startQuery(qOpts, spanReader, dependencyReader, logger, metricsFactory, mBldr, hc)
+			startQuery(qOpts, samplingReaderWriter, spanReader, dependencyReader, logger, metricsFactory, mBldr, hc)
 			hc.Ready()
 
 			select {
@@ -264,6 +268,7 @@ func startZipkinHTTPAPI(
 
 func startQuery(
 	qOpts *queryApp.QueryOptions,
+	samplingReaderWriter spanstore.SamplingReaderWriter,
 	spanReader spanstore.Reader,
 	depReader dependencystore.Reader,
 	logger *zap.Logger,
@@ -271,7 +276,7 @@ func startQuery(
 	metricsBuilder *pMetrics.Builder,
 	hc *healthcheck.HealthCheck,
 ) {
-	tracer, closer, err := jaegerClientConfig.Configuration{
+	_, closer, err := jaegerClientConfig.Configuration{
 		Sampler: &jaegerClientConfig.SamplerConfig{
 			Type:  "const",
 			Param: 1.0,
@@ -285,7 +290,8 @@ func startQuery(
 		spanReader,
 		depReader,
 		queryApp.HandlerOptions.Logger(logger),
-		queryApp.HandlerOptions.Tracer(tracer))
+		//queryApp.HandlerOptions.Tracer(tracer),
+		queryApp.HandlerOptions.SamplingWriter(samplingReaderWriter))
 
 	r := mux.NewRouter()
 	if qOpts.BasePath != "/" {

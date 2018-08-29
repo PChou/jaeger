@@ -45,6 +45,10 @@ type Factory interface {
 	CreateDependencyReader() (dependencystore.Reader, error)
 }
 
+type FactoryExt interface {
+	CreateSamplingReaderWriter() (spanstore.SamplingReaderWriter, error)
+}
+
 var (
 	// ErrArchiveStorageNotConfigured can be returned by the ArchiveFactory when the archive storage is not configured.
 	ErrArchiveStorageNotConfigured = errors.New("Archive storage not configured")

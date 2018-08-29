@@ -25,10 +25,18 @@ import (
 type Client interface {
 	IndexExists(index string) IndicesExistsService
 	CreateIndex(index string) IndicesCreateService
+	Delete() DeleteDocService
 	Index() IndexService
 	Search(indices ...string) SearchService
 	MultiSearch() MultiSearchService
 	io.Closer
+}
+
+type DeleteDocService interface {
+	Index(index string) DeleteDocService
+	Type(typ string) DeleteDocService
+	Id(id string) DeleteDocService
+	Delete(ctx context.Context) (*elastic.DeleteResponse, error)
 }
 
 // IndicesExistsService is an abstraction for elastic.IndicesExistsService

@@ -123,6 +123,18 @@ func (f *Factory) CreateSpanWriter() (spanstore.Writer, error) {
 	return spanstore.NewCompositeWriter(writers...), nil
 }
 
+func (f *Factory) CreateSamplingReaderWriter() (spanstore.SamplingReaderWriter, error) {
+	factory, ok := f.factories[f.SpanReaderType]
+	if !ok {
+		return nil, fmt.Errorf("No %s backend registered for sampling store", f.SpanReaderType)
+	}
+	if factoryExt, ok := factory.(storage.FactoryExt); !ok {
+		return nil, fmt.Errorf("No %s backend registered for sampling store", f.SpanReaderType)
+	} else {
+		return factoryExt.CreateSamplingReaderWriter()
+	}
+}
+
 // CreateDependencyReader implements storage.Factory
 func (f *Factory) CreateDependencyReader() (dependencystore.Reader, error) {
 	factory, ok := f.factories[f.DependenciesStorageType]

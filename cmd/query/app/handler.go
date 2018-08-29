@@ -44,6 +44,7 @@ const (
 	traceIDParam  = "traceID"
 	endTsParam    = "endTs"
 	lookbackParam = "lookback"
+	samplingParam = "appName"
 
 	defaultDependencyLookbackDuration = time.Hour * 24
 	defaultTraceQueryLookbackDuration = time.Hour * 24 * 2
@@ -86,6 +87,7 @@ func NewRouter() *mux.Router {
 // APIHandler implements the query service public API by registering routes at httpPrefix
 type APIHandler struct {
 	spanReader        spanstore.Reader
+	samplingWriter    spanstore.SamplingReaderWriter
 	archiveSpanReader spanstore.Reader
 	archiveSpanWriter spanstore.Writer
 	dependencyReader  dependencystore.Reader
@@ -177,6 +179,12 @@ func (aH *APIHandler) RegisterRoutes(router *mux.Router) {
 	aH.handleFunc(router, aH.doGraphQL, "/spans").Methods(http.MethodPost)
 	aH.handleFunc(router, aH.doGraphQL, "/dashboard").Methods(http.MethodPost)
 	aH.handleFunc(router, aH.doGraphQL, "/service").Methods(http.MethodPost)
+
+	//sampling restful
+	aH.handleFunc(router, aH.writeSampling, "/samplings").Methods(http.MethodPost)
+	aH.handleFunc(router, aH.getAllSamplings, "/samplings").Methods(http.MethodGet)
+	aH.handleFunc(router, aH.getSampling, "/samplings/{%s}", samplingParam).Methods(http.MethodGet)
+	aH.handleFunc(router, aH.deleteSampling, "/samplings/{%s}", samplingParam).Methods(http.MethodDelete)
 }
 
 func (aH *APIHandler) handleFunc(

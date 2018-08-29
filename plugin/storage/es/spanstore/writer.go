@@ -16,6 +16,7 @@ package spanstore
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"hash/fnv"
 	"strconv"
@@ -28,7 +29,7 @@ import (
 	"gopkg.in/olivere/elastic.v5"
 
 	"github.com/jaegertracing/jaeger/model"
-	"github.com/jaegertracing/jaeger/model/converter/json"
+	jConv "github.com/jaegertracing/jaeger/model/converter/json"
 	jModel "github.com/jaegertracing/jaeger/model/json"
 	"github.com/jaegertracing/jaeger/pkg/cache"
 	"github.com/jaegertracing/jaeger/pkg/es"
@@ -40,6 +41,9 @@ const (
 	serviceType = "service"
 
 	defaultNumShards = 5
+
+	samplingType  = "sampling"
+	samplingIndex = "jaeger-sampling"
 )
 
 type spanWriterMetrics struct {
@@ -131,7 +135,7 @@ func (s *SpanWriter) WriteSpan(span *model.Span) error {
 	serviceIndexName := indexWithDate(s.serviceIndexPrefix, span.StartTime)
 
 	// Convert model.Span into json.Span
-	jsonSpan := json.FromDomainEmbedProcess(span)
+	jsonSpan := jConv.FromDomainEmbedProcess(span)
 
 	if err := s.createIndex(serviceIndexName, serviceMapping, jsonSpan); err != nil {
 		return err
@@ -142,6 +146,58 @@ func (s *SpanWriter) WriteSpan(span *model.Span) error {
 	}
 	s.writeSpan(spanIndexName, jsonSpan)
 	return nil
+}
+
+func (s *SpanWriter) WriteSampling(sampling jModel.Sampling) error {
+	s.client.Index().Index(samplingIndex).Type(samplingType).Id(sampling.ApplicationName).BodyJson(sampling).Add()
+	return nil
+}
+
+func (s *SpanWriter) GetSampling(Id string) (jModel.Sampling, error) {
+	searchService := s.client.Search(samplingIndex).
+		Type(samplingType).
+		IgnoreUnavailable(true).
+		Query(elastic.NewIdsQuery().Ids(Id))
+
+	searchResult, err := searchService.Do(s.ctx)
+	if err != nil {
+		return jModel.Sampling{}, errors.Wrap(err, "Search service failed")
+	}
+	// b, _ := json.Marshal(searchResult)
+	// fmt.Println(string(b))
+	if len(searchResult.Hits.Hits) == 0 {
+		return jModel.Sampling{}, errors.New("Doc not found")
+	}
+
+	var jsonSpan jModel.Sampling
+	if err := json.Unmarshal(*searchResult.Hits.Hits[0].Source, &jsonSpan); err != nil {
+		return jModel.Sampling{}, err
+	}
+	return jsonSpan, nil
+}
+
+func (s *SpanWriter) DeleteSampling(Id string) error {
+	_, err := s.client.Delete().Index(samplingIndex).Type(samplingType).Id(Id).Delete(s.ctx)
+	return err
+}
+
+func (s SpanWriter) GetAllSamplings() ([]jModel.Sampling, error) {
+	searchResult, err := s.client.Search(samplingIndex).
+		Type(samplingType).
+		IgnoreUnavailable(true).Do(s.ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "Search service failed")
+	}
+
+	samps := make([]jModel.Sampling, len(searchResult.Hits.Hits))
+	for i, hit := range searchResult.Hits.Hits {
+		var s jModel.Sampling
+		json.Unmarshal(*hit.Source, &s)
+		samps[i] = s
+	}
+
+	return samps, nil
+
 }
 
 // Close closes SpanWriter

@@ -80,7 +80,7 @@ func main() {
 				logger.Fatal("Cannot create metrics factory.", zap.Error(err))
 			}
 
-			tracer, closer, err := jaegerClientConfig.Configuration{
+			_, closer, err := jaegerClientConfig.Configuration{
 				Sampler: &jaegerClientConfig.SamplerConfig{
 					Type:  "probabilistic",
 					Param: 1.0,
@@ -104,9 +104,14 @@ func main() {
 			if err != nil {
 				logger.Fatal("Failed to create dependency reader", zap.Error(err))
 			}
+			samplingReaderWriter, err := storageFactory.CreateSamplingReaderWriter()
+			if err != nil {
+				logger.Fatal("Failed to create sampling reader writer", zap.Error(err))
+			}
 
 			apiHandlerOptions := []app.HandlerOption{
 				app.HandlerOptions.Logger(logger),
+				app.HandlerOptions.SamplingWriter(samplingReaderWriter),
 				//app.HandlerOptions.Tracer(tracer),
 			}
 			apiHandlerOptions = append(apiHandlerOptions, archiveOptions(storageFactory, logger)...)

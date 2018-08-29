@@ -115,3 +115,14 @@ type DependencyLink struct {
 	Child     string `json:"child"`
 	CallCount uint64 `json:"callCount"`
 }
+
+// {
+// 	"app": "foo",
+// 	"type": "probabilistic",
+// 	"param": 0.8
+// }
+type Sampling struct {
+	ApplicationName string  `json:"app"`
+	Type            string  `json:"type"` //ratelimiting | probabilistic
+	Param           float64 `json:"param"`
+}
