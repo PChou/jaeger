@@ -21,15 +21,18 @@ import (
 	"github.com/uber/jaeger-lib/metrics"
 	"go.uber.org/zap"
 
+	"github.com/jaegertracing/jaeger/cmd/collector/app/sampling/strategystore"
 	"github.com/jaegertracing/jaeger/pkg/es"
 	"github.com/jaegertracing/jaeger/pkg/es/config"
 	esDepStore "github.com/jaegertracing/jaeger/plugin/storage/es/dependencystore"
 	esSpanStore "github.com/jaegertracing/jaeger/plugin/storage/es/spanstore"
 	"github.com/jaegertracing/jaeger/storage/dependencystore"
 	"github.com/jaegertracing/jaeger/storage/spanstore"
+	sm "github.com/jaegertracing/jaeger/storage/spanstore/metrics"
 )
 
 // Factory implements storage.Factory for Elasticsearch backend.
+// Factory implements strategystore.Factory for Elasticsearch backend.
 type Factory struct {
 	Options *Options
 
@@ -91,4 +94,11 @@ func (f *Factory) CreateDependencyReader() (dependencystore.Reader, error) {
 func (f *Factory) CreateSamplingReaderWriter() (spanstore.SamplingReaderWriter, error) {
 	cfg := f.primaryConfig
 	return esSpanStore.NewSpanWriter(f.primaryClient, f.logger, f.metricsFactory, cfg.GetNumShards(), cfg.GetNumReplicas(), cfg.GetIndexPrefix()), nil
+}
+
+// CreateStrategyStore implements strategystore.Factory
+func (f *Factory) CreateStrategyStore() (strategystore.StrategyStore, error) {
+	cfg := f.primaryConfig
+	m := esSpanStore.NewSpanReader(f.primaryClient, f.logger, cfg.GetMaxSpanAge(), f.metricsFactory, cfg.GetIndexPrefix()).(*sm.ReadMetricsDecorator)
+	return m, nil
 }

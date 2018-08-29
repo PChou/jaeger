@@ -54,6 +54,21 @@ func (_m *Client) CreateIndex(index string) es.IndicesCreateService {
 	return r0
 }
 
+func (_m *Client) Delete() es.DeleteDocService {
+	ret := _m.Called()
+
+	var r0 es.DeleteDocService
+	if rf, ok := ret.Get(0).(func() es.DeleteDocService); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(es.DeleteDocService)
+		}
+	}
+
+	return r0
+}
+
 // Index provides a mock function with given fields:
 func (_m *Client) Index() es.IndexService {
 	ret := _m.Called()

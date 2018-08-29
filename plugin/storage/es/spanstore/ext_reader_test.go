@@ -183,3 +183,11 @@ func TestGetNodeTopThroughput(t *testing.T) {
 		fmt.Println(r)
 	}
 }
+
+func TestGetSamplingStrategy(t *testing.T) {
+	reader, err := getLocalReader()
+	assert.Nil(t, err)
+	ret, err := reader.GetSamplingStrategy("1111")
+	fmt.Println(ret)
+	assert.Nil(t, err)
+}

@@ -20,8 +20,10 @@ import (
 
 	"github.com/uber/jaeger-lib/metrics"
 
+	"github.com/jaegertracing/jaeger/cmd/collector/app/sampling/strategystore"
 	"github.com/jaegertracing/jaeger/model"
 	"github.com/jaegertracing/jaeger/storage/spanstore"
+	"github.com/jaegertracing/jaeger/thrift-gen/sampling"
 )
 
 // ReadMetricsDecorator wraps a spanstore.Reader and collects metrics around each read operation.
@@ -181,6 +183,15 @@ func (m *ReadMetricsDecorator) GetNodes(query *spanstore.NodesQueryParameters) (
 	//defer m.getOperationsMetrics.emit(err, time.Since(start), len(retMe))
 	if sr, ok := m.spanReader.(spanstore.ExtReader); ok {
 		return sr.GetNodes(query)
+	}
+	return nil, errors.New("Not implement ExtReader")
+}
+
+func (m *ReadMetricsDecorator) GetSamplingStrategy(serviceName string) (*sampling.SamplingStrategyResponse, error) {
+	//start := time.Now()
+	//defer m.getOperationsMetrics.emit(err, time.Since(start), len(retMe))
+	if sr, ok := m.spanReader.(strategystore.StrategyStore); ok {
+		return sr.GetSamplingStrategy(serviceName)
 	}
 	return nil, errors.New("Not implement ExtReader")
 }

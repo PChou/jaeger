@@ -163,7 +163,7 @@ func main() {
 		collector.AddFlags,
 		queryApp.AddFlags,
 		pMetrics.AddFlags,
-		strategyStoreFactory.AddFlags,
+		//strategyStoreFactory.AddFlags, //TODO redefine es flag with storageFactory.AddFlags
 	)
 
 	if err := command.Execute(); err != nil {

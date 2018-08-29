@@ -1,12 +1,15 @@
 package spanstore
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/jaegertracing/jaeger/model"
 	"github.com/jaegertracing/jaeger/storage/spanstore"
+	"github.com/jaegertracing/jaeger/thrift-gen/sampling"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 	"gopkg.in/olivere/elastic.v5"
 )
 
@@ -482,5 +485,61 @@ func (s *SpanReader) GetNodes(query *spanstore.NodesQueryParameters) ([]string, 
 		retMe[i] = fmt.Sprintf("%v", b.Key)
 	}
 
+	return retMe, nil
+}
+
+type Sampling struct {
+	ApplicationName string  `json:"app"`
+	Type            string  `json:"type"` //ratelimiting | probabilistic
+	Param           float64 `json:"param"`
+}
+
+// TODO support retelimit
+func (s *SpanReader) GetSamplingStrategy(serviceName string) (*sampling.SamplingStrategyResponse, error) {
+	searchRequests := make([]*elastic.SearchRequest, 2)
+
+	searchRequests[0] = elastic.NewSearchRequest().IgnoreUnavailable(true).Type(samplingType).Source(elastic.NewSearchSource().Query(elastic.NewIdsQuery(samplingType).Ids("__DEFAULT")))
+	searchRequests[1] = elastic.NewSearchRequest().IgnoreUnavailable(true).Type(samplingType).Source(elastic.NewSearchSource().Query(elastic.NewIdsQuery(samplingType).Ids(serviceName)))
+	searchResult, err := s.client.MultiSearch().Add(searchRequests...).Index(samplingIndex).Do(s.ctx)
+	if err != nil {
+		return nil, err
+	}
+	// b, _ := json.Marshal(searchResult)
+	// fmt.Println(string(b))
+	//baseline
+	retMe := &sampling.SamplingStrategyResponse{
+		StrategyType: sampling.SamplingStrategyType_PROBABILISTIC,
+		ProbabilisticSampling: &sampling.ProbabilisticSamplingStrategy{
+			SamplingRate: 0.5,
+		},
+	}
+
+	if searchResult.Responses == nil || len(searchResult.Responses) == 0 {
+		return retMe, nil
+	}
+
+	for _, response := range searchResult.Responses {
+		if response.Hits.Hits == nil || len(response.Hits.Hits) == 0 {
+			continue
+		}
+		if response.Hits.Hits[0].Id == serviceName {
+			var samp Sampling
+			err := json.Unmarshal(*response.Hits.Hits[0].Source, &samp)
+			if err == nil {
+				retMe.ProbabilisticSampling.SamplingRate = samp.Param
+				break
+			}
+		}
+
+		if response.Hits.Hits[0].Id == "__DEFAULT" {
+			var samp Sampling
+			err := json.Unmarshal(*response.Hits.Hits[0].Source, &samp)
+			if err == nil {
+				retMe.ProbabilisticSampling.SamplingRate = samp.Param
+			}
+		}
+	}
+
+	s.logger.Info("Get sampling result", zap.String("service", serviceName), zap.Float64("rate", retMe.ProbabilisticSampling.SamplingRate))
 	return retMe, nil
 }

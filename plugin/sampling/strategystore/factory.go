@@ -26,15 +26,17 @@ import (
 	"github.com/jaegertracing/jaeger/plugin"
 	"github.com/jaegertracing/jaeger/plugin/sampling/strategystore/kafka"
 	"github.com/jaegertracing/jaeger/plugin/sampling/strategystore/static"
+	"github.com/jaegertracing/jaeger/plugin/storage/es"
 )
 
 const (
-	staticStrategyStoreType   = "static"
-	kafkaStrategyStoreType    = "kafka"
-	adaptiveStrategyStoreType = "adaptive"
+	staticStrategyStoreType        = "static"
+	kafkaStrategyStoreType         = "kafka"
+	adaptiveStrategyStoreType      = "adaptive"
+	elasticsearchStrategyStoreType = "elasticsearch"
 )
 
-var allSamplingTypes = []string{staticStrategyStoreType, kafkaStrategyStoreType} // TODO support adaptive
+var allSamplingTypes = []string{staticStrategyStoreType, kafkaStrategyStoreType, elasticsearchStrategyStoreType} // TODO support adaptive
 
 // Factory implements strategystore.Factory interface as a meta-factory for strategy storage components.
 type Factory struct {
@@ -66,6 +68,8 @@ func (f *Factory) getFactoryOfType(factoryType string) (strategystore.Factory, e
 		return static.NewFactory(), nil
 	case kafkaStrategyStoreType:
 		return kafka.NewFactory(), nil
+	case elasticsearchStrategyStoreType:
+		return es.NewFactory(), nil
 	default:
 		return nil, fmt.Errorf("Unknown sampling strategy store type %s. Valid types are %v", factoryType, allSamplingTypes)
 	}

@@ -40,5 +40,17 @@ func NewHandler(store strategystore.StrategyStore) Handler {
 
 // GetSamplingStrategy returns allowed sampling strategy for a given service name.
 func (h *handler) GetSamplingStrategy(ctx thrift.Context, serviceName string) (*sampling.SamplingStrategyResponse, error) {
-	return h.store.GetSamplingStrategy(serviceName)
+	resp, err := h.store.GetSamplingStrategy(serviceName)
+	if err != nil {
+		return resp, err
+	}
+
+	if resp.ProbabilisticSampling != nil && resp.ProbabilisticSampling.SamplingRate <= 0 {
+		resp.ProbabilisticSampling.SamplingRate = 0.000000001
+	}
+	if resp.ProbabilisticSampling != nil && resp.ProbabilisticSampling.SamplingRate >= 1 {
+		resp.ProbabilisticSampling.SamplingRate = 0.999999999
+	}
+
+	return resp, err
 }
