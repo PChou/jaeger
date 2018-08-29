@@ -137,6 +137,8 @@ func NewAPIHandler(spanReader spanstore.Reader, dependencyReader dependencystore
 			"applicationTopThroughput": makeApplicationTopThroughput(aH),
 			"serverTopThroughput":      makeServerTopThroughput(aH),
 			"serverList":               makeServerList(aH),
+			"serverThroughputTrends":   makeServerThroughput(aH),
+			"serverResponseTimeTrends": makeServerResponseTime(aH),
 			"serviceThroughputTrends":  makeServiceThroughput(aH),
 			"serviceResponseTrends":    makeServiceResponseTime(aH),
 			"traceList":                makeTraceList(aH),

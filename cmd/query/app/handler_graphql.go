@@ -443,6 +443,90 @@ func makeServerList(handler *APIHandler) *graphql.Field {
 	}
 }
 
+func makeServerThroughput(handler *APIHandler) *graphql.Field {
+	return &graphql.Field{
+		Type:        graphql.NewList(graphql.Int),
+		Description: "查询节点（服务器）",
+		Args: graphql.FieldConfigArgument{
+			"duration": &graphql.ArgumentConfig{
+				Description: "指定查询的时间区间",
+				Type:        gl.GLDurationType,
+			},
+			"serverId": &graphql.ArgumentConfig{
+				Description:  "指定节点（服务器）名",
+				Type:         graphql.ID,
+				DefaultValue: "",
+			},
+		},
+		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+			var durationParams gl.Duration
+			err := mapstructure.Decode(p.Info.VariableValues["duration"], &durationParams)
+			if err != nil {
+				return nil, err
+			}
+			serverId, ok := p.Info.VariableValues["serverId"].(string)
+			if !ok {
+				return nil, errors.New("serverId is not a valid String")
+			}
+			bqp, err := durationParams.ToBasicQueryParameters()
+			if err != nil {
+				return nil, err
+			}
+			extReader := handler.spanReader.(spanstore.ExtReader)
+			return extReader.GetThroughputTrends(&spanstore.ThroughputQueryParameters{
+				BasicQueryParameters: spanstore.BasicQueryParameters{
+					StartTimeMin: bqp.StartTimeMin,
+					StartTimeMax: bqp.StartTimeMax,
+				},
+				Instance:     serverId,
+				TimeInterval: time.Minute,
+			})
+		},
+	}
+}
+
+func makeServerResponseTime(handler *APIHandler) *graphql.Field {
+	return &graphql.Field{
+		Type:        graphql.NewList(graphql.Float),
+		Description: "查询节点（服务器）",
+		Args: graphql.FieldConfigArgument{
+			"duration": &graphql.ArgumentConfig{
+				Description: "指定查询的时间区间",
+				Type:        gl.GLDurationType,
+			},
+			"serverId": &graphql.ArgumentConfig{
+				Description:  "指定应用名称，如果不指定，则在全平台中查询",
+				Type:         graphql.ID,
+				DefaultValue: "",
+			},
+		},
+		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+			var durationParams gl.Duration
+			err := mapstructure.Decode(p.Info.VariableValues["duration"], &durationParams)
+			if err != nil {
+				return nil, err
+			}
+			serverId, ok := p.Info.VariableValues["serverId"].(string)
+			if !ok {
+				return nil, errors.New("serverId is not a valid String")
+			}
+			bqp, err := durationParams.ToBasicQueryParameters()
+			if err != nil {
+				return nil, err
+			}
+			extReader := handler.spanReader.(spanstore.ExtReader)
+			return extReader.GetResponseTimeTrends(&spanstore.ResponseTimeQueryParameters{
+				BasicQueryParameters: spanstore.BasicQueryParameters{
+					StartTimeMin: bqp.StartTimeMin,
+					StartTimeMax: bqp.StartTimeMax,
+				},
+				Instance:     serverId,
+				TimeInterval: time.Minute,
+			})
+		},
+	}
+}
+
 func makeServiceThroughput(handler *APIHandler) *graphql.Field {
 	return &graphql.Field{
 		Type:        gl.GLTrendListType,
